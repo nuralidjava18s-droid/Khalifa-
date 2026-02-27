@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restore Backup Koperasi</title>
+<style>
+  /* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+
+.user-section{
+  position:relative;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:40px;
+  background:white;
+  color:#333;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  overflow:hidden;
+  min-width:130px;
+}
+
+.dropdown-menu div{
+  padding:10px;
+  font-weight:bold;
+}
+
+.dropdown-menu div:hover{
+  background:#f0f0f0;
+}
+  
+  header{background:#1e90ff;color:white;padding:15px;display:flex;justify-content:space-between;align-items:center;}
+
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+.container{padding:20px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);}
+button{padding:8px 12px;margin:5px 0;cursor:pointer;border:none;border-radius:6px;color:white;background:#1e90ff;}
+button.danger{background:red;}
+input[type=file]{margin:10px 0;}
+h4{margin:5px 0;}
+.log-item{font-size:12px;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>Restore & Backup Koperasi</div>
+  <button onclick="window.location='dashboard.html'">Kembali</button>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h3>Backup Data</h3>
+    <button id="btnBackup">Backup Sekarang</button>
+  </div>
+
+  <div class="card">
+    <h3>Restore Data</h3>
+    <input type="file" id="fileRestore" accept=".json">
+    <button id="btnRestore">Restore Otomatis</button>
+  </div>
+
+  <div class="card">
+    <h3>Reset / Hapus Semua Data</h3>
+    <button id="btnReset" class="danger">Hapus Semua Data</button>
+  </div>
+
+  <div class="card">
+    <h3>Log Aktivitas Terakhir</h3>
+    <div id="logContainer">Memuat log...</div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, set, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* ===== CONFIG FIREBASE ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Proteksi login & role */
+const username = localStorage.getItem("user");
+const role = localStorage.getItem("role") || "user";
+if(!username) window.location.href="index.html";
+if(role !== "admin") alert("Hanya admin yang bisa restore atau reset!");
+
+// ===== LOG =====
+const logRef = ref(db,"koperasi/logs");
+function addLog(action){
+  push(logRef,{
+    user: username,
+    action: action,
+    timestamp: new Date().toLocaleString()
+  });
+}
+function loadLogs(){
+  const logContainer = document.getElementById("logContainer");
+  onValue(logRef, snapshot=>{
+    logContainer.innerHTML="";
+    if(snapshot.exists()){
+      const logs = snapshot.val();
+      const arr = Object.values(logs).sort((a,b)=> new Date(b.timestamp) - new Date(a.timestamp));
+      arr.slice(0,20).forEach(log=>{
+        const div = document.createElement("div");
+        div.className="log-item";
+        div.textContent = `${log.timestamp} - ${log.user} - ${log.action}`;
+        logContainer.appendChild(div);
+      });
+    } else logContainer.innerHTML="Belum ada log aktivitas.";
+  });
+}
+loadLogs();
+
+// ===== BACKUP =====
+document.getElementById("btnBackup").addEventListener("click", async ()=>{
+  const koperasiRef = ref(db,"koperasi");
+  const snap = await get(koperasiRef);
+  if(!snap.exists()){ alert("Data kosong!"); return; }
+
+  const data = snap.val();
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+
+  const fileName = `backup_koperasi_${new Date().toISOString().slice(0,10)}.json`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  alert(`Backup selesai!\nFile tersimpan: ${fileName}`);
+  addLog("Backup Data");
+});
+
+// ===== RESTORE =====
+document.getElementById("btnRestore").addEventListener("click", ()=>{
+  const fileInput = document.getElementById("fileRestore");
+  if(!fileInput.files[0]) return alert("Pilih file JSON dulu!");
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async function(e){
+    try{
+      const json = JSON.parse(e.target.result);
+      if(!json) return alert("File tidak valid!");
+
+      // Backup dulu sebelum restore
+      const koperasiRef = ref(db,"koperasi");
+      const snap = await get(koperasiRef);
+      if(snap.exists()){
+        const oldData = snap.val();
+        const blobOld = new Blob([JSON.stringify(oldData,null,2)], {type:"application/json"});
+        const urlOld = URL.createObjectURL(blobOld);
+        const aOld = document.createElement("a");
+        aOld.href = urlOld;
+        aOld.download = `backup_sebelum_restore_${new Date().toISOString().slice(0,10)}.json`;
+        aOld.click();
+        URL.revokeObjectURL(urlOld);
+        addLog("Backup Sebelum Restore");
+      }
+
+      // Pastikan struktur sesuai
+      const newData = {
+        anggota: json.anggota || {},
+        angsuran: json.angsuran || {},
+        kas: json.kas || {},
+        logs: json.logs || {},
+        pinjaman: json.pinjaman || {},
+        simpanan: json.simpanan || {}
+      };
+
+      await set(koperasiRef,newData);
+      alert("Restore selesai!");
+      addLog("Restore Otomatis");
+
+    }catch(err){
+      console.error(err);
+      alert("Restore gagal! File tidak valid");
+    }
+  }
+
+  reader.readAsText(file);
+});
+
+// ===== RESET =====
+document.getElementById("btnReset").addEventListener("click", async ()=>{
+  if(confirm("Yakin ingin menghapus semua data koperasi?")){
+    await remove(ref(db,"koperasi"));
+    alert("Semua data berhasil dihapus!");
+    addLog("Reset Data");
+  }
+});
+</script>
+
+</body>
+</html>

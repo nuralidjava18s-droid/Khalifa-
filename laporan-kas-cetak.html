@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Kas - Cetak & Share</title>
+
+<style>
+body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f4f6f9;font-size:13px;}
+summary{margin-bottom:10px;}
+.summary div{margin:3px 0;font-weight:bold;}
+.table{width:100%;border-collapse:collapse;margin-top:5px;}
+.table th, .table td{border:1px solid #ddd;padding:6px;font-size:12px;text-align:center;}
+.table th{background:#f1f1f1;font-weight:bold;}
+@media print {
+  body{background:white;}
+  button{display:none;}
+}
+  .card{text-align:center;margin-bottom:15px;}
+
+button{margin:3px; padding:6px 10px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+header{  
+  background: linear-gradient(to right, #1e90ff, #0f3057);  
+  color:white;  
+  padding:14px 20px;  
+  display:flex;  
+  justify-content:space-between;  
+  align-items:center;  
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);  
+}  
+  
+.brand{  
+  display:flex;  
+  align-items:center;  
+  gap:10px;  
+}  
+  
+.brand img{  
+  width:42px;  
+  height:42px;  
+  border-radius:50%;  
+  object-fit:cover;  
+}  
+  
+.brand-text .subtitle{  
+  font-size:12px;  
+  opacity:0.9;  
+}  
+  
+.brand-text .title{  
+  font-size:16px;  
+  font-weight:bold;  
+}  
+  
+  </style>
+</head>
+<body>
+ <header>  
+  <div class="brand">  
+    <img src="img/icon-192.png">  
+    <div class="brand-text">  
+      <div class="subtitle">Koperasi</div>  
+      <div class="title">ARFA DRIVER</div>  
+    </div>  
+  </div>  
+  <div>💰 Kas Koperasi</div>  
+  <button onclick="window.location='dashboard.html'">Kembali</button>  
+</header>  
+  <div class="card">
+  <h3>KOPERASI DRIVER KHALIFA</h3>
+  <h4>LAPORAN KAS</h4>
+  <div style="margin-top:10px;">
+      <button onclick="window.print()">🖨️ Cetak / Print</button>
+    <button onclick="shareWA()">📤 Share ke WhatsApp</button>
+  </div>
+  
+<div class="summary">
+  <div id="saldoKas">Saldo Kas  : Rp 0</div>
+  <div id="kasMasuk">Kas Masuk : Rp 0</div>
+  <div id="kasKeluar">Kas Keluar: Rp 0</div>
+</div>
+  </div>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Tanggal</th>
+      <th>Keterangan</th>
+      <th>Masuk</th>
+      <th>Keluar</th>
+      <th>Saldo</th>
+      <th>Sumber</th>
+    </tr>
+  </thead>
+  <tbody id="laporanKas"></tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const kasRef = ref(db,"koperasi/kas");
+
+let laporanData = [];
+
+// Ambil data kas
+async function ambilData(){
+  laporanData = [];
+  const snap = await get(kasRef);
+  if(snap.exists()){
+    const data = snap.val();
+    for(const k in data){
+      const item = data[k];
+      const jumlah = Number(item.jumlah) || 0;
+      const tipe = item.tipe || "masuk";
+      const tanggal = new Date(item.tanggal);
+
+      laporanData.push({
+        tanggal,
+        keterangan: item.keterangan || "-",
+        sumber: item.sumberKas || "cash",
+        masuk: tipe==="masuk"?jumlah:0,
+        keluar: tipe==="keluar"?jumlah:0
+      });
+    }
+  }
+  tampilkanLaporan();
+}
+
+// Tampilkan laporan & total
+function tampilkanLaporan(){
+  const tbody = document.getElementById("laporanKas");
+  tbody.innerHTML="";
+  let saldo=0,totalMasuk=0,totalKeluar=0;
+
+  laporanData.sort((a,b)=>a.tanggal-b.tanggal).forEach(i=>{
+    saldo += i.masuk - i.keluar;
+    totalMasuk += i.masuk;
+    totalKeluar += i.keluar;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i.tanggal.toLocaleDateString("id-ID")}</td>
+      <td>${i.keterangan}</td>
+      <td>${i.masuk ? "Rp "+i.masuk.toLocaleString("id-ID") : "-"}</td>
+      <td>${i.keluar ? "Rp "+i.keluar.toLocaleString("id-ID") : "-"}</td>
+      <td>Rp ${saldo.toLocaleString("id-ID")}</td>
+      <td>${i.sumber.toUpperCase()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("saldoKas").innerText = "Saldo Kas  : Rp "+saldo.toLocaleString("id-ID");
+  document.getElementById("kasMasuk").innerText = "Kas Masuk : Rp "+totalMasuk.toLocaleString("id-ID");
+  document.getElementById("kasKeluar").innerText = "Kas Keluar: Rp "+totalKeluar.toLocaleString("id-ID");
+}
+
+// Tombol Share WhatsApp
+function shareWA(){
+  let saldo = document.getElementById("saldoKas").innerText;
+  let masuk = document.getElementById("kasMasuk").innerText;
+  let keluar = document.getElementById("kasKeluar").innerText;
+
+  let text = `LAPORAN KAS KOPERASI DRIVER KHALIFA\n\n${saldo}\n${masuk}\n${keluar}\n\n`;
+
+  const rows = document.querySelectorAll("#laporanKas tr");
+  for(let i=0;i<Math.min(5, rows.length);i++){
+    const cols = rows[i].querySelectorAll("td");
+    text += `${cols[0].innerText} | ${cols[1].innerText} | ${cols[2].innerText} | ${cols[3].innerText} | ${cols[4].innerText}\n`;
+  }
+
+  const encodedText = encodeURIComponent(text);
+  const waURL = `https://wa.me/?text=${encodedText}`;
+  window.open(waURL, "_blank");
+}
+
+ambilData();
+</script>
+
+</body>
+</html>

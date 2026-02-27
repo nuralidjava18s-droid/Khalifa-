@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Koperasi Arfa">
+<meta name="theme-color" content="#1e90ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<title>Dashboard Koperasi</title>
+
+<style>
+body{
+  overscroll-behavior:none;
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f4f6f9;
+}
+
+/* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+
+.user-section{
+  position:relative;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:40px;
+  background:white;
+  color:#333;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  overflow:hidden;
+  min-width:130px;
+}
+
+.dropdown-menu div{
+  padding:10px;
+  font-weight:bold;
+}
+
+.dropdown-menu div:hover{
+  background:#f0f0f0;
+}
+
+/* MENU */
+.menu{
+  padding:20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:15px;
+}
+
+/* TOTAL KAS */
+.kas-card{
+  grid-column:1/-1;
+  background: linear-gradient(to right, #32cd32, #1e90ff);
+  color:white;
+  font-size:20px;
+  font-weight:bold;
+  padding:22px;
+  border-radius:16px;
+  text-align:center;
+  box-shadow:0 5px 15px rgba(0,0,0,0.15);
+}
+
+/* Judul */
+.menu-title{
+  grid-column:1/-1;
+  text-align:center;
+  font-size:16px;
+  font-weight:bold;
+  color:#333;
+  margin:5px 0 10px 0;
+  letter-spacing:1px;
+}
+
+/* Card Menu */
+.card{
+  background:white;
+  padding:18px;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  cursor:pointer;
+  text-align:center;
+  font-weight:bold;
+  transition:.2s;
+}
+
+.card:hover{
+  transform:translateY(-3px);
+}
+
+.hidden{
+  display:none;
+}
+
+/* Footer */
+.footer{
+  text-align:center;
+  padding:20px;
+  font-size:12px;
+  color:#777;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+
+  <div class="user-section" id="userDisplay">
+    <span id="userInfo"></span> ▼
+    <div class="dropdown-menu" id="dropdownMenu">
+      <div onclick="logout()">Logout</div>
+    </div>
+  </div>
+</header>
+
+<div class="menu">
+
+  <div class="kas-card">
+  <div>💵 Cash : Rp <span id="totalCash">0</span></div>
+  <div>🏦 Bank : Rp <span id="totalBank">0</span></div>
+  <hr style="border:0;border-top:1px solid rgba(255,255,255,0.5);margin:10px 0;">
+  <div>💰 Total Kas : Rp <span id="totalKas">0</span></div>
+</div>
+
+  <div class="menu-title">MENU KOPERASI</div>
+
+  <div class="card" onclick="goPage('anggota.html')">👥 Anggota</div>
+  <div class="card" onclick="goPage('kas.html')">💰 Kas</div>
+  <div class="card" onclick="goPage('simpanan.html')">💳 Simpanan</div>
+  <div class="card" onclick="goPage('pinjaman.html')">📄 Pinjaman</div>
+  <div class="card" onclick="goPage('angsuran.html')">🧾 Angsuran</div>
+  <div class="card" onclick="goPage('laporan.html')">📝 Laporan</div>
+  <div class="card" onclick="goPage('pencairan.html')">📤 Pencairan</div>
+  
+  <div class="card" onclick="goPage('backup.html')">💾 Backup</div>
+
+  <div id="menuKelolaUser" class="card hidden" onclick="goPage('kelola-user.html')">
+    🛠 Kelola User
+  </div>
+
+</div>
+
+<div class="footer">
+  © 2026 Koperasi Driver Arfa • Sistem Informasi Koperasi
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Firebase */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Proteksi login & session code */
+const username = localStorage.getItem("user");
+const role = localStorage.getItem("role");
+const sessionCode = localStorage.getItem("sessionCode");
+
+// Sesuaikan kode akses
+const validCodes = { admin:"ali26", user:"user26" };
+
+if(!username || !role || sessionCode !== validCodes[role]){
+  alert("Akses ditolak! Silakan login ulang.");
+  window.location.href="index.html";
+} else {
+  document.getElementById("userInfo").innerText = username + " (" + role + ")";
+  if(role === "admin"){
+    document.getElementById("menuKelolaUser").classList.remove("hidden");
+  }
+}
+
+/* Logout */
+window.logout = ()=>{
+  localStorage.clear();
+  window.location.href="index.html";
+}
+
+/* Navigasi */
+window.goPage = (page)=>{
+  window.location.href = page;
+}
+
+/* Dropdown */
+const userDisplay = document.getElementById("userDisplay");
+const dropdownMenu = document.getElementById("dropdownMenu");
+
+userDisplay.addEventListener("click", ()=>{
+  dropdownMenu.style.display =
+    dropdownMenu.style.display === "block" ? "none" : "block";
+});
+
+document.addEventListener("click",(e)=>{
+  if(!userDisplay.contains(e.target)){
+    dropdownMenu.style.display="none";
+  }
+});
+  
+  /* ================= TOTAL KAS REALTIME ================= */
+/* ================= TOTAL KAS REALTIME ================= */
+
+const kasRef = ref(db,"koperasi/kas");
+
+onValue(kasRef, snapshot=>{
+
+  let totalCash = 0;
+  let totalBank = 0;
+
+  if(snapshot.exists()){
+    const data = snapshot.val();
+
+    for(const k in data){
+      const item = data[k];
+
+      const jumlah = Number(item.jumlah) || 0;
+      const tipe = item.tipe || "masuk";
+      const sumberKas = item.sumberKas || "cash";
+
+      if(sumberKas === "cash"){
+        if(tipe === "masuk") totalCash += jumlah;
+        if(tipe === "keluar") totalCash -= jumlah;
+      }
+
+      if(sumberKas === "bank"){
+        if(tipe === "masuk") totalBank += jumlah;
+        if(tipe === "keluar") totalBank -= jumlah;
+      }
+    }
+  }
+
+  document.getElementById("totalCash").innerText =
+    totalCash.toLocaleString("id-ID");
+
+  document.getElementById("totalBank").innerText =
+    totalBank.toLocaleString("id-ID");
+
+  document.getElementById("totalKas").innerText =
+    (totalCash + totalBank).toLocaleString("id-ID");
+
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log("Service Worker Registered"))
+      .catch(err => console.log("SW Error:", err));
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Koperasi Arfa">
+<meta name="theme-color" content="#1e90ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<title>Dashboard Koperasi</title>
+
+<style>
+body{
+  overscroll-behavior:none;
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f4f6f9;
+}
+
+/* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+
+.user-section{
+  position:relative;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:40px;
+  background:white;
+  color:#333;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  overflow:hidden;
+  min-width:130px;
+}
+
+.dropdown-menu div{
+  padding:10px;
+  font-weight:bold;
+}
+
+.dropdown-menu div:hover{
+  background:#f0f0f0;
+}
+
+/* MENU */
+.menu{
+  padding:20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:15px;
+}
+
+/* Judul */
+.menu-title{
+  grid-column:1/-1;
+  text-align:center;
+  font-size:16px;
+  font-weight:bold;
+  color:#333;
+  margin:5px 0 10px 0;
+  letter-spacing:1px;
+}
+
+/* Card Menu */
+.card{
+  background:white;
+  padding:18px;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  cursor:pointer;
+  text-align:center;
+  font-weight:bold;
+  transition:.2s;
+}
+
+.card:hover{
+  transform:translateY(-3px);
+}
+
+.hidden{
+  display:none;
+}
+
+/* Footer */
+.footer{
+  text-align:center;
+  padding:20px;
+  font-size:12px;
+  color:#777;
+}
+</style>
+</head>
+
+<body>
+<header>
+    <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  
+    <button onclick="window.location='dashboard.html'">Kembali</button>
+   
+  </div>
+</header>
+
+  
+
+<div class="card">
+<div class="menu-title">MENU LAPORAN</div>
+
+  <div class="card" onclick="goPage('laporan-kas-pwa.html')"> laporan kas filter </div>
+  <div class="card" onclick="goPage('laporan-kas-cetak.html')">laporan kas</div>
+  <div class="card" onclick="goPage('laporan-cetak.html')">lapran pinjaman</div>
+  
+  </div>
+</body>
+<script>
+window.goPage = (page)=>{
+  window.location.href = page;
+}
+</script>
+<div class="footer">
+  © 2026 Koperasi Driver Arfa • Sistem Informasi Koperasi
+</div>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpanan Anggota</title>
+
+<link rel="stylesheet" href="css/simpanan.css">
+  
+  
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  <div>💳 Simpanan Anggota</div>
+  <div>
+    <button onclick="window.location='dashboard.html'">Kembali</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card total">
+    Total Simpanan: Rp <span id="totalSimpanan">0</span>
+  </div>
+
+  <div id="formSimpanan" class="card">
+    <h3>Tambah Simpanan</h3>
+
+    <select id="anggotaSelect"></select>
+
+    <select id="jenis">
+      <option value="pokok">Simpanan Pokok</option>
+      <option value="wajib">Simpanan Wajib</option>
+      <option value="sukarela">Simpanan Sukarela</option>
+    </select>
+
+    <input type="number" id="jumlah" placeholder="Jumlah">
+    <input type="text" id="keterangan" placeholder="Keterangan">
+
+    <select id="sumberKas">
+      <option value="cash">Kas Cash</option>
+      <option value="bank">Kas Bank</option>
+    </select>
+
+    <button id="btnSimpan" class="btn-primary">Simpan</button>
+  </div>
+
+  <div class="card">
+    <h3>Data Simpanan</h3>
+    <div id="cardContainer"></div>
+  </div>
+
+</div>
+
+<script type="module" src="js/simpanan.js"></script>
+</body>
+</html>

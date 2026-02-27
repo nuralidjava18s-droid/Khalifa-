@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Anggota</title>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+.container{padding:20px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+input{padding:8px;margin-bottom:10px;width:100%;border-radius:6px;border:1px solid #ccc;}
+button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;color:white;}
+.btn-primary{background:#1e90ff;}
+.btn-edit{background:#ff9800;}
+.btn-delete{background:#e74c3c;}
+.anggota-container{display:flex;flex-wrap:wrap;gap:15px;}
+.anggota-card{background:white;width:280px;padding:15px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.1);border-left:6px solid #1e90ff;}
+.anggota-card h3{margin:0 0 10px 0;}
+.anggota-info{font-size:14px;margin-bottom:5px;}
+.aksi{margin-top:10px;display:flex;gap:5px;}
+/* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+
+.user-section{
+  position:relative;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:40px;
+  background:white;
+  color:#333;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  overflow:hidden;
+  min-width:130px;
+}
+
+.dropdown-menu div{
+  padding:10px;
+  font-weight:bold;
+}
+
+.dropdown-menu div:hover{
+  background:#f0f0f0;
+}
+  
+  
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  <div>👥 Data Anggota</div>
+  <button class="btn-primary" onclick="kembali()">Kembali</button>
+</header>
+
+<div class="container">
+
+  <!-- Form Tambah Anggota -->
+  <div class="card" id="formTambah">
+    <h3>Tambah Anggota</h3>
+    <input type="text" id="nama" placeholder="Nama Anggota">
+    <input type="text" id="alamat" placeholder="Alamat">
+    <input type="text" id="telepon" placeholder="No Telepon">
+    <input type="text" id="rekening" placeholder="No Rekening">
+    <button class="btn-primary" onclick="tambahAnggota()">Simpan</button>
+  </div>
+
+  <!-- Daftar Anggota -->
+  <div class="anggota-container" id="listAnggota"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const anggotaRef = ref(db,"koperasi/anggota");
+
+/* Cek login & role */
+const usernameLogin = localStorage.getItem("user");
+const role = localStorage.getItem("role") || "user";
+if(!usernameLogin) window.location.href="index.html";
+
+/* Sembunyikan form tambah untuk user biasa */
+if(role !== "admin"){
+  const form = document.getElementById("formTambah");
+  form.querySelector("h3").innerText = "Tambah Anggota (Admin saja)";
+  form.querySelector("button").style.display = "none";
+}
+
+/* ================= AUTO ID ================= */
+async function generateId(){
+  const snapshot = await get(anggotaRef);
+  if(!snapshot.exists()) return "AG001";
+
+  const data = snapshot.val();
+  let max = 0;
+  for(const key in data){
+    if(data[key].id){
+      const nomor = parseInt(data[key].id.replace("AG",""));
+      if(nomor > max) max = nomor;
+    }
+  }
+  return "AG" + (max+1).toString().padStart(3,"0");
+}
+
+/* ================= TAMPIL DATA ================= */
+onValue(anggotaRef, (snapshot)=>{
+  const container = document.getElementById("listAnggota");
+  container.innerHTML = "";
+  if(snapshot.exists()){
+    const data = snapshot.val();
+    for(const key in data){
+      let aksiHTML = "";
+      if(role === "admin"){
+        aksiHTML = `
+          <div class="aksi">
+            <button class="btn-edit" onclick="editAnggota('${key}')">Edit</button>
+            <button class="btn-delete" onclick="hapusAnggota('${key}')">Hapus</button>
+          </div>
+        `;
+      }
+      container.innerHTML += `
+        <div class="anggota-card">
+          <h3>${data[key].nama}</h3>
+          <div class="anggota-info"><b>ID:</b> ${data[key].id}</div>
+          <div class="anggota-info"><b>Alamat:</b> ${data[key].alamat || "-"}</div>
+          <div class="anggota-info"><b>Telepon:</b> ${data[key].telepon || "-"}</div>
+          <div class="anggota-info"><b>Rekening:</b> ${data[key].rekening || "-"}</div>
+          ${aksiHTML}
+        </div>
+      `;
+    }
+  }
+});
+
+/* ================= TAMBAH ================= */
+window.tambahAnggota = async function(){
+  const nama = document.getElementById("nama").value.trim();
+  const alamat = document.getElementById("alamat").value.trim();
+  const telepon = document.getElementById("telepon").value.trim();
+  const rekening = document.getElementById("rekening").value.trim();
+  if(!nama) return alert("Nama wajib diisi");
+
+  const idBaru = await generateId();
+  await push(anggotaRef,{id:idBaru,nama,alamat,telepon,rekening});
+
+  document.getElementById("nama").value="";
+  document.getElementById("alamat").value="";
+  document.getElementById("telepon").value="";
+  document.getElementById("rekening").value="";
+}
+
+/* ================= EDIT ================= */
+window.editAnggota = async function(key){
+  if(role !== "admin") return alert("Hanya admin yang bisa edit");
+
+  const snapshot = await get(ref(db,"koperasi/anggota/"+key));
+  if(!snapshot.exists()) return;
+  const data = snapshot.val();
+
+  const namaBaru = prompt("Edit Nama:", data.nama);
+  if(namaBaru===null) return;
+  const alamatBaru = prompt("Edit Alamat:", data.alamat);
+  if(alamatBaru===null) return;
+  const teleponBaru = prompt("Edit Telepon:", data.telepon);
+  if(teleponBaru===null) return;
+  const rekeningBaru = prompt("Edit Rekening:", data.rekening);
+  if(rekeningBaru===null) return;
+
+  await update(ref(db,"koperasi/anggota/"+key),{
+    nama:namaBaru, alamat:alamatBaru, telepon:teleponBaru, rekening:rekeningBaru
+  });
+  alert("Data berhasil diupdate");
+}
+
+/* ================= HAPUS ================= */
+window.hapusAnggota = function(key){
+  if(role !== "admin") return alert("Hanya admin yang bisa hapus");
+  if(confirm("Yakin hapus anggota?")) remove(ref(db,"koperasi/anggota/"+key));
+}
+
+/* ================= KEMBALI ================= */
+window.kembali = function(){
+  window.location.href="dashboard.html";
+}
+</script>
+
+</body>
+</html>

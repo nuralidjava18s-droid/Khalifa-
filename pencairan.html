@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pencairan Simpanan Sukarela</title>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f4f6f9;}
+
+  /* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+
+.user-section{
+  position:relative;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.dropdown-menu{
+  display:none;
+  position:absolute;
+  right:0;
+  top:40px;
+  background:white;
+  color:#333;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  overflow:hidden;
+  min-width:130px;
+}
+
+.dropdown-menu div{
+  padding:10px;
+  font-weight:bold;
+}
+
+.dropdown-menu div:hover{
+  background:#f0f0f0;
+}
+  
+.container{padding:14px;}
+.card{
+  background:white;padding:14px;margin-bottom:14px;
+  border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);
+}
+input,select{padding:8px;margin-bottom:10px;width:100%;border-radius:6px;border:1px solid #ccc;}
+button:disabled{background:#aaa;cursor:not-allowed;}
+button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+
+  .total{font-size:18px;font-weight:bold;margin-bottom:10px;}
+.a{background:#fff;border-left:5px solid #1e90ff;margin-bottom:15px;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.anggota-card-row{display:flex;justify-content:space-between;margin-bottom:6px;}
+.anggota-card-row span:first-child{font-weight:bold;color:#333;}
+.transaksi{margin-left:10px;margin-top:5px;padding-left:5px;border-left:2px solid #ccc;}
+.transaksi div{display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px;}
+.transaksi div span:first-child{font-weight:bold;}
+.transaksi-item{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  font-size:10px;
+  padding:4px 0;
+  border-bottom:1px dashed #ddd;
+}
+
+.transaksi-item span:nth-child(2){
+  color:red;
+  font-weight:bold;
+  text-align:right;
+}
+  </style>
+  
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  
+    <button onclick="window.location='dashboard.html'">Kembali</button>
+   
+  </div>
+</header>
+
+
+
+<div class="card">
+  <div>📄Pencairan simpanan sukarela</div>
+  <div>
+  <label>Pilih Anggota</label>
+  <select id="anggotaSelect"></select>
+
+  <div style="margin-top:5px">
+    Saldo Sukarela: 
+    <strong>Rp <span id="saldo">0</span></strong>
+  </div>
+   <button onclick="exportPDF()">Export PDF</button>
+ 
+</div>
+
+<div class="card adminOnly">
+  <h3>Form Pencairan (Admin)</h3>
+  <input type="number" id="jumlah" placeholder="Jumlah Pencairan">
+  <input type="text" id="keterangan" placeholder="Keterangan">
+  <button onclick="cairkan()">Cairkan</button>
+  <div id="notif"></div>
+</div>
+
+<div class="card">
+  <h4>Riwayat Simp Sukarela</h4>
+   <div id="riwayat"></div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  
+  
+  const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+ 
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const role = localStorage.getItem("role");
+if(role==="admin"){
+  document.querySelector(".adminOnly").style.display="block";
+}
+
+const anggotaRef = ref(db,"koperasi/anggota");
+const simpananRef = ref(db,"koperasi/simpanan");
+const kasRef = ref(db,"koperasi/kas");
+
+let anggotaData = {};
+let simpananData = [];
+
+onValue(anggotaRef,(snap)=>{
+  anggotaData = snap.val() || {};
+  loadDropdown();
+});
+
+onValue(simpananRef,(snap)=>{
+  simpananData=[];
+  snap.forEach(child=>{
+    simpananData.push(child.val());
+  });
+  updateView();
+});
+
+function loadDropdown(){
+  const select=document.getElementById("anggotaSelect");
+  select.innerHTML="<option value=''>-- Pilih Anggota --</option>";
+  for(let id in anggotaData){
+    select.innerHTML+=`<option value="${id}">
+      ${anggotaData[id].nama}
+    </option>`;
+  }
+}
+
+document.getElementById("anggotaSelect")
+.addEventListener("change",updateView);
+
+function updateView(){
+  const id=document.getElementById("anggotaSelect").value;
+  if(!id) return;
+
+  let saldo=0;
+  let rows="";
+
+  simpananData.forEach(d=>{
+    if(d.anggotaId===id && d.jenis==="sukarela"){
+      saldo+=Number(d.jumlah);
+
+      rows+=`
+      <tr>
+        <td>${d.tanggal||"-"}</td>
+        <td>${d.keterangan||"-"}</td>
+        <td class="${d.jumlah>0?'masuk':'keluar'}">
+          Rp ${Number(d.jumlah).toLocaleString()}
+        </td>
+      </tr>`;
+    }
+  });
+
+  document.getElementById("saldo").innerText=
+    saldo.toLocaleString();
+
+  document.getElementById("riwayat").innerHTML=`
+    <table class="table">
+      <tr>
+        <th>Tanggal</th>
+        <th>Keterangan</th>
+        <th>Jumlah</th>
+      </tr>
+      ${rows}
+    </table>
+  `;
+}
+
+window.cairkan=async function(){
+
+  if(role!=="admin"){
+    alert("Hanya admin yang bisa mencairkan!");
+    return;
+  }
+
+  const id=document.getElementById("anggotaSelect").value;
+  if(!id) return alert("Pilih anggota dulu");
+
+  const jumlah=parseInt(document.getElementById("jumlah").value);
+  const ket=document.getElementById("keterangan").value||"Pencairan";
+
+  let saldo=0;
+  simpananData.forEach(d=>{
+    if(d.anggotaId===id && d.jenis==="sukarela"){
+      saldo+=Number(d.jumlah);
+    }
+  });
+
+  if(jumlah>saldo){
+    document.getElementById("notif").innerHTML=
+      "<div class='warning'>Saldo tidak cukup!</div>";
+    return;
+  }
+
+  await push(simpananRef,{
+    anggotaId:id,
+    nama:anggotaData[id].nama,
+    jenis:"sukarela",
+    jumlah:-jumlah,
+    tanggal:new Date().toLocaleString(),
+    keterangan:ket
+  });
+
+  await push(kasRef,{
+    sumber:`Pencairan Sukarela - ${anggotaData[id].nama}`,
+    jumlah:-jumlah,
+    tanggal:new Date().toLocaleString()
+  });
+
+  document.getElementById("notif").innerHTML=
+    "<div class='success'>Berhasil dicairkan</div>";
+
+  document.getElementById("jumlah").value="";
+  document.getElementById("keterangan").value="";
+};
+
+window.exportPDF = function(){
+
+  const id = document.getElementById("anggotaSelect").value;
+  if(!id) return alert("Pilih anggota dulu");
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const nama = anggotaData[id].nama;
+
+  let totalSimpanan = 0;
+  let totalDicairkan = 0;
+  let terakhirCair = "-";
+
+  simpananData.forEach(d=>{
+    if(d.anggotaId===id && d.jenis==="sukarela"){
+      totalSimpanan += Number(d.jumlah);
+
+      if(Number(d.jumlah) < 0){
+        totalDicairkan += Math.abs(Number(d.jumlah));
+        terakhirCair = d.tanggal || "-";
+      }
+    }
+  });
+
+  const tanggalCetak = new Date().toLocaleDateString("id-ID",{
+    day:"2-digit",
+    month:"long",
+    year:"numeric"
+  });
+
+  // ===== JUDUL =====
+  doc.setFontSize(15);
+  doc.setFont("helvetica","bold");
+  doc.text("PENCAIRAN SIMPANAN SUKARELA",105,20,{align:"center"});
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica","normal");
+  doc.text("Tanggal Cetak : "+tanggalCetak,24,30);
+
+  // ===== ISI =====
+  doc.setFontSize(12);
+
+  doc.setFont("helvetica","bold");
+  doc.text("Nama Anggota",24,45);
+  doc.setFont("helvetica","normal");
+  doc.text(": "+nama,80,45);
+
+  doc.setFont("helvetica","bold");
+  doc.text("Sisa Simpanan Sukarela",24,55);
+  doc.setFont("helvetica","bold");
+  doc.text(": Rp "+totalSimpanan.toLocaleString("id-ID"),80,55);
+
+  doc.setFont("helvetica","bold");
+  doc.text("Total Dicairkan",24,65);
+  doc.setFont("helvetica","bold");
+  doc.text(": Rp "+totalDicairkan.toLocaleString("id-ID"),80,65);
+
+  doc.setFont("helvetica","bold");
+  doc.text("Terakhir Dicairkan",24,75);
+  doc.setFont("helvetica","normal");
+  doc.text(": "+terakhirCair,80,75);
+
+  // ===== TTD =====
+  doc.setFont("helvetica","normal");
+  doc.text("Mengetahui,",120,95);
+  doc.text("Admin Koperasi",120,105);
+
+  doc.save("Slip_Pencairan_"+nama+".pdf");
+};
+window.kembali = ()=>{window.location.href="dashboard.html";}
+</script>
+</body>
+</html>

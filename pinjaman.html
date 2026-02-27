@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinjaman</title>
+
+<style>
+/* HEADER */
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.brand img{width:42px;height:42px;border-radius:50%;object-fit:cover;}
+.brand-text .subtitle{font-size:12px;opacity:0.9;}
+.brand-text .title{font-size:16px;font-weight:bold;}
+body{font-family:Arial,sans-serif;margin:0;background:#f4f6f9;}
+.container{padding:14px;}
+.card{background:white;padding:14px;margin-bottom:14px;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);}
+input,select{padding:8px;margin-bottom:10px;width:100%;border-radius:6px;border:1px solid #ccc;}
+button:disabled{background:#aaa;cursor:not-allowed;}
+button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+.total{font-size:18px;font-weight:bold;margin-bottom:10px;}
+.anggota-card{background:#fff;border-left:5px solid #1e90ff;margin-bottom:15px;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.anggota-card-row{display:flex;justify-content:space-between;margin-bottom:6px;}
+.anggota-card-row span:first-child{font-weight:bold;color:#333;}
+.transaksi{margin-left:10px;margin-top:5px;padding-left:5px;border-left:2px solid #ccc;}
+.transaksi div{display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px;}
+.transaksi div span:first-child{font-weight:bold;}
+.transaksi-item{display:grid;grid-template-columns: 1fr 1fr 1.5fr 1fr;font-size:10px;padding:4px 0;border-bottom:1px dashed #ddd;}
+.transaksi-item span:nth-child(2){color:red;font-weight:bold;text-align:right;}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  <div>📄 Pinjaman</div>
+  <div><button onclick="window.location='dashboard.html'">Kembali</button></div>
+</header>
+
+<div class="container">
+
+  <!-- Form Pencairan Pinjaman -->
+  <div class="card" id="formPinjaman">
+    <h3>Form Pinjaman</h3>
+    <select id="anggotaPinjamanSelect"></select>
+    <input type="number" id="jumlahPinjaman" placeholder="Jumlah Pinjaman">
+    <input type="text" id="ketPinjaman" placeholder="Keterangan (opsional)">
+    <select id="sumberPinjaman">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+    <button id="btnPinjaman">Cairkan Pinjaman</button>
+    <button id="btnPDF">Export PDF</button>
+  </div>
+
+  <!-- Data Pinjaman -->
+  <div class="card">
+    <h3>Data Pinjaman Anggota</h3>
+    <div id="cardContainer"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* ===== CONFIG ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Proteksi login & role */
+const username = localStorage.getItem("user");
+const role = localStorage.getItem("role") || "user";
+if(!username) window.location.href="index.html";
+
+/* References Firebase */
+const anggotaRef = ref(db,"koperasi/anggota");
+const pinjamanRef = ref(db,"koperasi/pinjaman");
+const kasRef = ref(db,"koperasi/kas");
+
+/* Load dropdown anggota */
+const anggotaPinjamanSelect = document.getElementById("anggotaPinjamanSelect");
+onValue(anggotaRef, snapshot=>{
+  anggotaPinjamanSelect.innerHTML = "<option value=''>Pilih Anggota</option>";
+  snapshot.forEach(child=>{
+    const data = child.val();
+    const option = document.createElement("option");
+    option.value = child.key;
+    option.textContent = data.nama;
+    anggotaPinjamanSelect.appendChild(option);
+  });
+});
+
+/* Load & render pinjaman */
+let anggotaData = {};
+async function loadPinjaman(selectedAnggotaId = "") {
+  const container = document.getElementById("cardContainer");
+  container.innerHTML = "";
+  let snap = await get(pinjamanRef);
+  let rekap = {};
+  
+  if(snap.exists()){
+    snap.forEach(child=>{
+      const item = child.val();
+      if(!rekap[item.anggotaId]) rekap[item.anggotaId] = {nama:item.nama, jumlah:0, transaksi:[]};
+      rekap[item.anggotaId].jumlah += Number(item.jumlah);
+      rekap[item.anggotaId].transaksi.push({
+        jumlah: Number(item.jumlah),
+        keterangan: item.keterangan || `Pinjaman - ${item.nama}`,
+        tanggal: item.tanggal || "-",
+        sumber: item.sumber || "cash"
+      });
+    });
+  }
+
+  anggotaData = rekap;
+
+  let anggotaToShow = {};
+  if(selectedAnggotaId && rekap[selectedAnggotaId]){
+    anggotaToShow[selectedAnggotaId] = rekap[selectedAnggotaId];
+  } else {
+    anggotaToShow = rekap;
+  }
+
+  for(const id in anggotaToShow){
+    const data = anggotaToShow[id];
+    const card = document.createElement("div");
+    card.className="anggota-card";
+
+    let html = `
+      <div class="anggota-card-row">
+        <span>Anggota:</span>
+        <span>${data.nama}</span>
+      </div>
+      <div class="anggota-card-row">
+        <span>Total Pinjaman:</span>
+        <span>Rp ${data.jumlah.toLocaleString("id-ID")}</span>
+      </div>
+      <div class="transaksi">
+        <div style="font-weight:bold;margin-bottom:6px;">Detail Transaksi:</div>
+    `;
+
+    data.transaksi.forEach(t=>{
+      html += `
+        <div class="transaksi-item">
+          <span>${formatTanggal(t.tanggal)}</span>
+          <span>Rp ${t.jumlah.toLocaleString("id-ID")}</span>
+          <span>${t.keterangan} [${t.sumber}]</span>
+          <span>Keluar</span>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    card.innerHTML = html;
+    container.appendChild(card);
+  }
+}
+
+anggotaPinjamanSelect.addEventListener("change", ()=>{
+  const selectedId = anggotaPinjamanSelect.value;
+  loadPinjaman(selectedId);
+});
+loadPinjaman();
+
+function formatTanggal(tgl){
+  const d = new Date(tgl);
+  if(isNaN(d)) return tgl;
+  return d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});
+}
+
+/* Pencairan pinjaman - hanya admin */
+const btnPinjaman = document.getElementById("btnPinjaman");
+if(role!=="admin") btnPinjaman.disabled=true;
+
+btnPinjaman.addEventListener("click", async ()=>{
+  const anggotaId = anggotaPinjamanSelect.value;
+  if(!anggotaId) return alert("Pilih anggota dulu");
+  const nama = anggotaPinjamanSelect.options[anggotaPinjamanSelect.selectedIndex].text;
+  const jumlah = Number(document.getElementById("jumlahPinjaman").value);
+  const ket = document.getElementById("ketPinjaman").value;
+  const sumber = document.getElementById("sumberPinjaman").value;
+  if(!jumlah || jumlah<=0) return alert("Jumlah pinjaman tidak valid");
+
+  // Push pinjaman
+  await push(pinjamanRef,{
+    anggotaId: anggotaId,
+    nama: nama,
+    jumlah: jumlah,
+    keterangan: ket || `Pinjaman - ${nama}`,
+    tanggal: new Date().toLocaleString(),
+    sumber: sumber
+  });
+
+  // Push ke kas agar keterangan muncul
+  await push(kasRef,{
+    keterangan: ket || `Pinjaman - ${nama}`,
+    jumlah: jumlah,
+    tanggal: new Date().toLocaleString(),
+    tipe: "keluar",
+    sumberKas: sumber
+  });
+
+  document.getElementById("jumlahPinjaman").value="";
+  document.getElementById("ketPinjaman").value="";
+  alert(`Pinjaman dicairkan ke ${sumber.toUpperCase()}!`);
+  loadPinjaman();
+});
+
+/* Export PDF Pinjaman */
+document.getElementById("btnPDF").addEventListener("click", async ()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const tanggalCetak = new Date().toLocaleDateString("id-ID");
+  const bulan = new Date().getMonth()+1;
+  const tahun = new Date().getFullYear();
+  const nomorDoc = `PINJ/${String(bulan).padStart(2,'0')}/${tahun}`;
+  const img = new Image();
+  img.src = "img/ims.png";
+  const selectedAnggotaId = anggotaPinjamanSelect.value;
+
+  img.onload = function(){
+    doc.addImage(img,"PNG",15,8,22,24);
+    doc.setFontSize(14); doc.setFont(undefined,"bold");
+    doc.text("KOPERASI DRIVER",105,15,{align:"center"});
+    doc.setFontSize(11); doc.setFont(undefined,"normal");
+    doc.text("ARFA KHALIFA",105,21,{align:"center"});
+    doc.text("LAPORAN PINJAMAN ANGGOTA",105,27,{align:"center"});
+    doc.setFontSize(9);
+    doc.text(`No: ${nomorDoc}`,180,15,{align:"right"});
+    doc.text(`Cetak: ${tanggalCetak}`,180,20,{align:"right"});
+    doc.line(10,38,200,38);
+
+    const tableColumn=["Anggota","Tanggal","Jumlah","Keterangan","Sumber","Jenis"];
+    const tableRows=[];
+    let totalPinjaman = 0;
+
+    const anggotaToPrint = selectedAnggotaId && anggotaData[selectedAnggotaId] 
+      ? { [selectedAnggotaId]: anggotaData[selectedAnggotaId] } 
+      : anggotaData;
+
+    for(const id in anggotaToPrint){
+      const data = anggotaToPrint[id];
+      data.transaksi.forEach(t=>{
+        totalPinjaman += t.jumlah;
+        tableRows.push([
+          data.nama,
+          t.tanggal,
+          "Rp "+t.jumlah.toLocaleString("id-ID"),
+          t.keterangan,
+          t.sumber,
+          "Keluar"
+        ]);
+      });
+    }
+
+    doc.autoTable({
+      head:[tableColumn],
+      body:tableRows,
+      startY:45,
+      styles:{fontSize:8},
+      headStyles:{fillColor:[220,53,69]},
+      columnStyles:{2:{halign:"right"}}
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11); doc.setFont(undefined,"bold");
+    doc.text("Total Pinjaman : Rp "+totalPinjaman.toLocaleString("id-ID"),14,finalY);
+    doc.save(`Laporan_Pinjaman_${tanggalCetak.replace(/\//g,"-")}.pdf`);
+  };
+});
+</script>
+
+</body>
+</html>
