@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Kas PRO</title>
+<link rel="manifest" href="manifest.json">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;font-size:13px;}
+header{background:#1e90ff;color:white;padding:12px;display:flex;justify-content:space-between;align-items:center;}
+.container{padding:15px;}
+.card{background:white;padding:12px;margin-bottom:12px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,.08);}
+button{padding:6px 8px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #eee;padding:6px;text-align:center;}
+th{background:#f1f1f1;}
+.masuk{color:green;font-weight:bold;}
+.keluar{color:red;font-weight:bold;}
+.saldo{font-weight:bold;}
+.laporan-title{text-align:center;margin:5px 0 10px 0;font-weight:bold;font-size:14px;}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>💰 Laporan Kas PRO</div>
+  <div>
+    <button onclick="window.location='dashboard.html'">🔙 Kembali</button>
+    <button id="btnPDF">Download PDF</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div id="laporanJudul" class="laporan-title">Laporan Kas: Semua Data</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Keterangan</th>
+          <th>Masuk</th>
+          <th>Keluar</th>
+          <th>Saldo</th>
+          <th>Sumber</th>
+        </tr>
+      </thead>
+      <tbody id="laporanKas"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">TOTAL</td>
+          <td id="totalMasuk"></td>
+          <td id="totalKeluar"></td>
+          <td id="totalSaldo"></td>
+          <td>-</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const kasRef = ref(db,"koperasi/kas");
+
+let laporanData = [];
+let filteredData = [];
+
+// Ambil data dari Firebase
+async function ambilData(){
+  laporanData = [];
+  const snap = await get(kasRef);
+
+  if(snap.exists()){
+    const data = snap.val();
+    for(const k in data){
+      const item = data[k];
+      const jumlah = Number(item.jumlah) || 0;
+      const tipe = item.tipe || "masuk";
+      const tanggal = new Date(item.tanggal);
+
+      laporanData.push({
+        tanggal,
+        keterangan: item.keterangan || "-",
+        sumber: item.sumberKas || "cash",
+        masuk: tipe==="masuk"?jumlah:0,
+        keluar: tipe==="keluar"?jumlah:0
+      });
+    }
+  }
+
+  tampilkanTabel();
+}
+
+// Tampilkan semua data (tanpa filter)
+function tampilkanTabel(){
+  const tbody = document.getElementById("laporanKas");
+  tbody.innerHTML="";
+  let saldo=0,totalMasuk=0,totalKeluar=0;
+
+  filteredData = laporanData.sort((a,b)=>a.tanggal-b.tanggal);
+
+  filteredData.forEach(i=>{
+    saldo += i.masuk - i.keluar;
+    totalMasuk += i.masuk;
+    totalKeluar += i.keluar;
+
+    tbody.innerHTML+=`
+      <tr>
+        <td>${i.tanggal.toLocaleDateString("id-ID")}</td>
+        <td>${i.keterangan}</td>
+        <td class="masuk">${i.masuk?"Rp "+i.masuk.toLocaleString("id-ID"):"-"}</td>
+        <td class="keluar">${i.keluar?"Rp "+i.keluar.toLocaleString("id-ID"):"-"}</td>
+        <td class="saldo">Rp ${saldo.toLocaleString("id-ID")}</td>
+        <td>${i.sumber.toUpperCase()}</td>
+      </tr>`;
+  });
+
+  document.getElementById("totalMasuk").innerText="Rp "+totalMasuk.toLocaleString("id-ID");
+  document.getElementById("totalKeluar").innerText="Rp "+totalKeluar.toLocaleString("id-ID");
+  document.getElementById("totalSaldo").innerText="Rp "+saldo.toLocaleString("id-ID");
+}
+
+// Download PDF
+function downloadPDFKas(){
+
+  if(filteredData.length===0){
+    alert("Data kosong!");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  let saldo=0,totalMasuk=0,totalKeluar=0;
+
+  const tableRows = filteredData.map(i=>{
+    saldo += i.masuk - i.keluar;
+    totalMasuk += i.masuk;
+    totalKeluar += i.keluar;
+
+    return [
+      i.tanggal.toLocaleDateString("id-ID"),
+      i.keterangan,
+      i.masuk ? "Rp "+i.masuk.toLocaleString("id-ID") : "",
+      i.keluar ? "Rp "+i.keluar.toLocaleString("id-ID") : "",
+      "Rp "+saldo.toLocaleString("id-ID"),
+      i.sumber.toUpperCase()
+    ];
+  });
+
+  doc.autoTable({
+    head:[["Tanggal","Keterangan","Masuk","Keluar","Saldo","Sumber"]],
+    body:tableRows,
+    startY:20,
+    styles:{fontSize:8}
+  });
+
+  doc.save("Laporan_Kas.pdf");
+}
+
+document.getElementById("btnPDF").addEventListener("click", downloadPDFKas);
+ambilData();
+
+</script>
+
+</body>
+</html>

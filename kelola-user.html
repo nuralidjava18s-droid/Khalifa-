@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kelola User (Admin)</title>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:#1e90ff;color:white;padding:15px;display:flex;justify-content:space-between;align-items:center;}
+.container{padding:20px;}
+.card{background:white;padding:15px;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);margin-bottom:15px;}
+input,select{padding:8px;margin:5px 0;width:100%;box-sizing:border-box;}
+button{padding:6px 10px;margin-top:5px;border:none;border-radius:5px;cursor:pointer;}
+.add{background:#1e90ff;color:white;}
+.delete{background:red;color:white;}
+.reset{background:orange;color:white;}
+.logout{background:black;color:white;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+th{background:#eee;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>Kelola User (Admin)</div>
+  <div>
+    <span id="welcomeUser"></span>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Tambah User -->
+  <div class="card">
+    <h3>Tambah User</h3>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <label><input type="checkbox" id="showPassword"> Tampilkan Password</label>
+    <select id="role">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button class="add" id="btnTambah">Tambah</button>
+  </div>
+
+  <!-- Daftar User -->
+  <div class="card">
+    <h3>Daftar User</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Password</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="userTable"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const usersRef = ref(db,'koperasi/users');
+
+/* Login & role check */
+const usernameLogin = localStorage.getItem("user");
+const role = localStorage.getItem("role");
+if(!usernameLogin || role !== "admin") window.location.href="login.html";
+document.getElementById("welcomeUser").innerText = usernameLogin + " (" + role + ")";
+
+/* Toggle show password */
+document.getElementById("showPassword").addEventListener("change", function(){
+  const pw = document.getElementById("password");
+  pw.type = this.checked ? "text" : "password";
+});
+
+/* Real-time list user */
+onValue(usersRef, snapshot=>{
+  const table = document.getElementById("userTable");
+  table.innerHTML = "";
+  if(snapshot.exists()){
+    const users = snapshot.val();
+    for(const key in users){
+      const u = users[key];
+      table.innerHTML += `
+        <tr>
+          <td>${u.username}</td>
+          <td>
+            <select onchange="ubahRole('${key}', this.value)">
+              <option value="user" ${u.role==='user'?'selected':''}>User</option>
+              <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+            </select>
+          </td>
+          <td>${u.password}</td>
+          <td>
+            <button class="delete" onclick="hapusUser('${key}')">Hapus</button>
+            <button class="reset" onclick="resetPassword('${key}')">Reset PW</button>
+          </td>
+        </tr>
+      `;
+    }
+  }
+});
+
+/* Tambah user */
+document.getElementById("btnTambah").addEventListener("click", async ()=>{
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const roleVal = document.getElementById("role").value;
+  if(!username || !password) return alert("Isi semua field");
+  await push(usersRef,{username,password,role:roleVal});
+  alert("User berhasil ditambahkan");
+  document.getElementById("username").value="";
+  document.getElementById("password").value="";
+});
+
+/* Hapus user */
+window.hapusUser = function(key){
+  if(confirm("Yakin hapus user ini?")) remove(ref(db,'koperasi/users/'+key));
+}
+
+/* Reset password */
+window.resetPassword = async function(key){
+  const newPW = prompt("Masukkan password baru:");
+  if(newPW) update(ref(db,'koperasi/users/'+key),{password:newPW});
+}
+
+/* Ubah role */
+window.ubahRole = function(key, newRole){
+  update(ref(db,'koperasi/users/'+key),{role:newRole});
+}
+
+/* Logout */
+  
+/* Logout aman */
+window.logout = function() {
+  try {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+  } catch (e) {
+    console.warn("Gagal hapus localStorage:", e);
+  }
+  // Redirect ke halaman login
+  window.location.href = "dashboard.html";
+}
+</script>
+
+</body>
+</html>

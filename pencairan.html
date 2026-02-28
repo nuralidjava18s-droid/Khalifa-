@@ -78,6 +78,7 @@ header{
 .card{
   background:white;padding:14px;margin-bottom:14px;
   border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);
+  text-align:center;
 }
 input,select{padding:8px;margin-bottom:10px;width:100%;border-radius:6px;border:1px solid #ccc;}
 button:disabled{background:#aaa;cursor:not-allowed;}
@@ -114,11 +115,12 @@ button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#
     <div class="brand-text">
       <div class="subtitle">Koperasi</div>
       <div class="title">ARFA DRIVER</div>
-    </div>
+   
   </div>
   
     <button onclick="window.location='dashboard.html'">Kembali</button>
-   
+    <button onclick="exportPDF()">Export PDF</button>
+ 
   </div>
 </header>
 
@@ -126,7 +128,7 @@ button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#
 
 <div class="card">
   <div>📄Pencairan simpanan sukarela</div>
-  <div>
+  <p></p>
   <label>Pilih Anggota</label>
   <select id="anggotaSelect"></select>
 
@@ -134,8 +136,7 @@ button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#
     Saldo Sukarela: 
     <strong>Rp <span id="saldo">0</span></strong>
   </div>
-   <button onclick="exportPDF()">Export PDF</button>
- 
+  
 </div>
 
 <div class="card adminOnly">

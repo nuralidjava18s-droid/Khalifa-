@@ -3,211 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Laporan Kas - PWA</title>
-<link rel="manifest" href="manifest.json">
+<title>Laporan Kas</title>
+
 <style>
-body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f4f6f9;font-size:13px;}
-header{text-align:center;margin-bottom:10px;}
-header h1{margin:0;font-size:18px;}
-header h2{margin:2px 0 10px 0;font-size:14px;}
-.filter{margin-bottom:10px;text-align:center;}
-.filter input{margin:0 5px;padding:4px;}
-.filter button{padding:5px 8px;margin-left:5px;}
-.summary{margin-bottom:10px;text-align:center;}
-.summary div{margin:3px 0;font-weight:bold;}
-.table{width:100%;border-collapse:collapse;margin-top:5px;}
-.table th, .table td{border:1px solid #ddd;padding:6px;font-size:12px;text-align:center;}
-.table th{background:#f1f1f1;font-weight:bold;}
-.card{text-align:center;margin-bottom:10px;}
-/* HEADER */  
-header{  
-  background: linear-gradient(to right, #1e90ff, #0f3057);  
-  color:white;  
-  padding:14px 20px;  
-  display:flex;  
-  justify-content:space-between;  
-  align-items:center;  
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);  
-}  
-  
-.brand{  
-  display:flex;  
-  align-items:center;  
-  gap:10px;  
-}  
-  
-.brand img{  
-  width:42px;  
-  height:42px;  
-  border-radius:50%;  
-  object-fit:cover;  
-}  
-  
-.brand-text .subtitle{  
-  font-size:12px;  
-  opacity:0.9;  
-}  
-  
-.brand-text .title{  
-  font-size:16px;  
-  font-weight:bold;  
-}  
-  
-.user-section{  
-  position:relative;  
-  cursor:pointer;  
-  font-size:13px;  
-}  
-  @media print {body{background:white;} button{display:none;}}
-button{margin:5px; padding:6px 10px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+body{font-family:Arial;margin:0;padding:20px;background:#f4f6f9;font-size:13px;}
+header{
+  background:linear-gradient(to right,#1e90ff,#0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.card{text-align:center;margin-bottom:15px;}
+.filter{text-align:center;margin-bottom:10px;}
+.filter input{padding:5px;margin:0 5px;}
+.filter button{padding:6px 10px;}
+.summary div{font-weight:bold;margin:3px 0;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:12px;}
+th{background:#f1f1f1;}
+button{padding:6px 10px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
+@media print{button{display:none;}}
 </style>
 </head>
 
 <body>
-  <header>  
-  <div class="brand">  
-    <img src="img/icon-192.png">  
-    <div class="brand-text">  
-      <div class="subtitle">Koperasi</div>  
-      <div class="title">ARFA DRIVER</div>  
-    </div>  
-  </div>  
-  <div>💰 Kas Koperasi</div>  
-  <button onclick="window.location='dashboard.html'">Kembali</button>  
-</header>  
 
-  <div class="card">
-  <h3>KOPERASI DRIVER KHALIFA</h3>
-  <h4>LAPORAN KAS</h4>
+<header>
+  <div><b>KOPERASI DRIVER KHALIFA</b></div>
+  <div>💰 Laporan Kas</div>
+  <button onclick="window.location='dashboard.html'">Kembali</button>
+</header>
 
-<div class="filter">
-  Dari: <input type="date" id="tglAwal">
-  Sampai: <input type="date" id="tglAkhir">
-  <button onclick="filterTanggal()">Terapkan Filter</button>
-</div>
-
-<div class="summary">
-  <div id="saldoKas">Saldo Kas  : Rp 0</div>
-  <div id="kasMasuk">Kas Masuk : Rp 0</div>
-  <div id="kasKeluar">Kas Keluar: Rp 0</div>
-</div>
-
-<div style="text-align:center;">
-  <button onclick="window.location='dashboard.html'">🔙 Dashboard</button>
-  <button onclick="window.print()">🖨️ Cetak / Print</button>
-  <button id="shareWA">📤 Share ke WhatsApp</button>
-</div>
+<div class="card">
+  <div class="filter">
+    Dari: <input type="date" id="tglAwal">
+    Sampai: <input type="date" id="tglAkhir">
+    <button onclick="filterTanggal()">Filter</button>
+    <button onclick="resetFilter()">Reset</button>
   </div>
-<table class="table">
-  <thead>
-    <tr>
-      <th>Tanggal</th>
-      <th>Keterangan</th>
-      <th>Masuk</th>
-      <th>Keluar</th>
-      <th>Saldo</th>
-      <th>Sumber</th>
-    </tr>
-  </thead>
-  <tbody id="laporanKas"></tbody>
+
+  <div class="summary">
+    <div id="saldoKas">Saldo Kas : Rp 0</div>
+    <div id="kasMasuk">Kas Masuk : Rp 0</div>
+    <div id="kasKeluar">Kas Keluar : Rp 0</div>
+  </div>
+
+  <button onclick="window.print()">🖨️ Print</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Keterangan</th>
+<th>Masuk</th>
+<th>Keluar</th>
+<th>Saldo</th>
+<th>Sumber</th>
+</tr>
+</thead>
+<tbody id="laporanKas"></tbody>
 </table>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
   authDomain: "arfa-c7dee.firebaseapp.com",
   databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
-  projectId: "arfa-c7dee"
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
 };
+
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const kasRef = ref(db,"koperasi/kas");
 
-let laporanData = [];
+let laporanData=[];
 
-// Ambil data kas
-async function ambilData(){
-  laporanData = [];
-  const snap = await get(kasRef);
+function formatRp(n){
+  return Number(n||0).toLocaleString("id-ID");
+}
+
+/* AMBIL DATA REALTIME */
+onValue(kasRef,(snap)=>{
+
+  laporanData=[];
+
   if(snap.exists()){
-    const data = snap.val();
+    const data=snap.val();
+
     for(const k in data){
-      const item = data[k];
-      const jumlah = Number(item.jumlah) || 0;
-      const tipe = item.tipe || "masuk";
-      const tanggal = new Date(item.tanggal);
+      const item=data[k];
+
+      if(!item.jumlah || !item.tipe) continue;
+
+      let tanggal;
+
+      // SUPPORT TIMESTAMP & STRING LAMA
+      if(typeof item.tanggal==="number"){
+        tanggal=new Date(item.tanggal);
+      }else if(typeof item.tanggal==="string"){
+        const t=item.tanggal.replace(",","").replace(/\./g,":");
+        tanggal=new Date(t);
+      }
+
+      if(!tanggal || isNaN(tanggal)) continue;
+
+      const jumlah=Number(item.jumlah||0);
 
       laporanData.push({
         tanggal,
-        keterangan: item.keterangan || "-",
-        sumber: item.sumberKas || "cash",
-        masuk: tipe==="masuk"?jumlah:0,
-        keluar: tipe==="keluar"?jumlah:0
+        keterangan:item.keterangan ?? "-",
+        sumber:item.sumberKas ?? "-",
+        masuk:item.tipe==="masuk"?jumlah:0,
+        keluar:item.tipe==="keluar"?jumlah:0
       });
     }
   }
+
   tampilkanLaporan(laporanData);
-}
 
-// Render tabel
-function tampilkanLaporan(data){
-  const tbody = document.getElementById("laporanKas");
-  tbody.innerHTML="";
-  let saldo=0,totalMasuk=0,totalKeluar=0;
+});
 
-  data.sort((a,b)=>a.tanggal-b.tanggal).forEach(i=>{
-    saldo += i.masuk - i.keluar;
-    totalMasuk += i.masuk;
-    totalKeluar += i.keluar;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i.tanggal.toLocaleDateString("id-ID")}</td>
-      <td>${i.keterangan}</td>
-      <td>${i.masuk ? "Rp "+i.masuk.toLocaleString("id-ID") : "-"}</td>
-      <td>${i.keluar ? "Rp "+i.keluar.toLocaleString("id-ID") : "-"}</td>
-      <td>Rp ${saldo.toLocaleString("id-ID")}</td>
-      <td>${i.sumber.toUpperCase()}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  document.getElementById("saldoKas").innerText = "Saldo Kas  : Rp "+saldo.toLocaleString("id-ID");
-  document.getElementById("kasMasuk").innerText = "Kas Masuk : Rp "+totalMasuk.toLocaleString("id-ID");
-  document.getElementById("kasKeluar").innerText = "Kas Keluar: Rp "+totalKeluar.toLocaleString("id-ID");
-}
-
-// Filter tanggal
+/* FILTER */
 function filterTanggal(){
-  const tglAwal = new Date(document.getElementById("tglAwal").value);
-  const tglAkhir = new Date(document.getElementById("tglAkhir").value);
+  const awal=document.getElementById("tglAwal").value;
+  const akhir=document.getElementById("tglAkhir").value;
 
-  if(isNaN(tglAwal) || isNaN(tglAkhir)){
-    alert("Pilih tanggal awal dan akhir!");
+  if(!awal || !akhir){
+    alert("Pilih tanggal awal & akhir");
     return;
   }
 
-  const filtered = laporanData.filter(i => i.tanggal >= tglAwal && i.tanggal <= tglAkhir);
+  const tAwal=new Date(awal+"T00:00:00");
+  const tAkhir=new Date(akhir+"T23:59:59");
+
+  const filtered=laporanData.filter(i=>{
+    return i.tanggal>=tAwal && i.tanggal<=tAkhir;
+  });
+
   tampilkanLaporan(filtered);
 }
+function tampilkanLaporan(data){
 
-// Share ke WA
-document.getElementById("shareWA").addEventListener("click", ()=>{
-  let pesan = `Laporan Kas KOPERASI DRIVER KHALIFA\n\n`;
-  const tbody = document.getElementById("laporanKas").children;
-  for(let tr of tbody){
-    const tds = tr.children;
-    pesan += `${tds[0].innerText} | ${tds[1].innerText} | ${tds[2].innerText} | ${tds[3].innerText} | ${tds[4].innerText}\n`;
-  }
-  const urlWA = `https://wa.me/?text=${encodeURIComponent(pesan)}`;
-  window.open(urlWA, "_blank");
-});
+  const tbody=document.getElementById("laporanKas");
+  tbody.innerHTML="";
 
-ambilData();
+  let saldo=0;
+  let totalMasuk=0;
+  let totalKeluar=0;
+
+  // URUTKAN DARI PALING LAMA KE BARU
+  data.sort((a,b)=>a.tanggal - b.tanggal);
+
+  data.forEach(i=>{
+
+    const masuk = Number(i.masuk)||0;
+    const keluar = Number(i.keluar)||0;
+
+    saldo += masuk - keluar;
+    totalMasuk += masuk;
+    totalKeluar += keluar;
+
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${i.tanggal.toLocaleDateString("id-ID")}</td>
+      <td>${i.keterangan}</td>
+      <td>${masuk ? "Rp "+formatRp(masuk) : "-"}</td>
+      <td>${keluar ? "Rp "+formatRp(keluar) : "-"}</td>
+      <td>Rp ${formatRp(saldo)}</td>
+      <td>${(i.sumber||"-").toUpperCase()}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("saldoKas").innerText="Saldo Kas : Rp "+formatRp(saldo);
+  document.getElementById("kasMasuk").innerText="Kas Masuk : Rp "+formatRp(totalMasuk);
+  document.getElementById("kasKeluar").innerText="Kas Keluar : Rp "+formatRp(totalKeluar);
+}
+function resetFilter(){
+  document.getElementById("tglAwal").value="";
+  document.getElementById("tglAkhir").value="";
+  tampilkanLaporan(laporanData);
+}
 </script>
 
 </body>

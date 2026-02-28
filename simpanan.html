@@ -1,65 +1,313 @@
 <!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="id">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
 <title>Simpanan Anggota</title>
+  
+  <style>  
+  
+body{font-family:Arial,sans-serif;margin:0;background:#f4f6f9;}  
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
 
-<link rel="stylesheet" href="css/simpanan.css">
-  
-  
-</head>
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+  .brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+.container{padding:20px;}  
+.card{  
+  background:white;  
+  padding:15px;  
+  margin-bottom:15px;  
+  border-radius:8px;  
+  box-shadow:0 3px 10px rgba(0,0,0,.1);  
+}  
+input,select{  
+  padding:8px;  
+  margin-bottom:10px;  
+  width:100%;  
+  border-radius:6px;  
+  border:1px solid #ccc;  
+}  
+button{  
+  padding:8px 12px;  
+  cursor:pointer;  
+  background:#1e90ff;  
+  border:none;  
+  color:white;  
+  border-radius:6px;  
+}  
+button:disabled{background:#aaa;}  
+.total{  
+  font-size:18px;  
+  font-weight:bold;  
+}  
+.anggota-card{  
+  border-left:5px solid #1e90ff;  
+  margin-bottom:12px;  
+  padding:12px;  
+  border-radius:8px;  
+  background:white;  
+  box-shadow:0 2px 8px rgba(0,0,0,.08);  
+}  
+.anggota-card-row{  
+  display:flex;  
+  justify-content:space-between;  
+  margin-bottom:5px;  
+}  
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>  </head>  
 <body>
-
-<header>
+  
+  <header>
   <div class="brand">
     <img src="img/icon-192.png">
-    <div class="brand-text">
+     <div class="brand-text">
       <div class="subtitle">Koperasi</div>
       <div class="title">ARFA DRIVER</div>
-    </div>
-  </div>
-  <div>💳 Simpanan Anggota</div>
-  <div>
-    <button onclick="window.location='dashboard.html'">Kembali</button>
-  </div>
+     </div>
+       <button onclick="kembali()">Kembali</button>  
+    <button id="btnPDF">Export PDF</button>  
+  </div>  
 </header>
-
-<div class="container">
-
-  <div class="card total">
-    Total Simpanan: Rp <span id="totalSimpanan">0</span>
+  
+  <div class="container">
+    <div class="card total">  
+    Total Simpanan: Rp <span id="totalSimpanan">0</span>  
   </div>
-
-  <div id="formSimpanan" class="card">
-    <h3>Tambah Simpanan</h3>
-
-    <select id="anggotaSelect"></select>
-
-    <select id="jenis">
-      <option value="pokok">Simpanan Pokok</option>
-      <option value="wajib">Simpanan Wajib</option>
-      <option value="sukarela">Simpanan Sukarela</option>
+    <div class="card">  
+    <h3>Tambah Simpanan</h3>  
+    <select id="anggotaSelect">
+      
     </select>
+      <select id="jenis">  
+  <option value="pokok">Simpanan Pokok</option>  
+  <option value="wajib">Simpanan Wajib</option>  
+  <option value="sukarela">Simpanan Sukarela</option>  
+</select>  
 
-    <input type="number" id="jumlah" placeholder="Jumlah">
-    <input type="text" id="keterangan" placeholder="Keterangan">
+<input type="number" id="jumlah" placeholder="Jumlah Simpanan">  
+<input type="text" id="keterangan" placeholder="Keterangan">  
 
-    <select id="sumberKas">
-      <option value="cash">Kas Cash</option>
-      <option value="bank">Kas Bank</option>
-    </select>
+<button id="btnSimpan">Simpan</button>
 
-    <button id="btnSimpan" class="btn-primary">Simpan</button>
-  </div>
+  </div>    
+    <div class="card">  
+    <h3>Data Simpanan Per Anggota</h3>  
+    <div id="cardContainer">
+      
+    </div>  
+    </div>
+  </div>  <script type="module">  
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";  
+import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";  
+  
+/* FIREBASE CONFIG */  
+const firebaseConfig = {  
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",  
+  authDomain: "arfa-c7dee.firebaseapp.com",  
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",  
+  projectId: "arfa-c7dee",  
+  storageBucket: "arfa-c7dee.firebasestorage.app",  
+  messagingSenderId: "468058520812",  
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"  
+};  
+  
+const app = initializeApp(firebaseConfig);  
+const db = getDatabase(app);  
+  
+if(!localStorage.getItem("user")) window.location.href="index.html";  
+  
+const anggotaRef = ref(db,"koperasi/anggota");  
+const simpananRef = ref(db,"koperasi/simpanan");  
+const kasRef = ref(db,"koperasi/kas");  
+  
+/* LOAD DROPDOWN ANGGOTA */  
+onValue(anggotaRef, snapshot=>{  
+  const select = document.getElementById("anggotaSelect");  
+  select.innerHTML = "<option value=''>Pilih Anggota</option>";  
+  snapshot.forEach(child=>{  
+    const opt = document.createElement("option");  
+    opt.value = child.key;  
+    opt.textContent = child.val().nama;  
+    select.appendChild(opt);  
+  });  
+});  
+  
+/* LOAD DATA SIMPANAN */  
+let anggotaData = {};  
+  
+onValue(simpananRef, snapshot=>{  
+  const container = document.getElementById("cardContainer");  
+  container.innerHTML = "";  
+  let total = 0;  
+  let rekap = {};  
+  
+  snapshot.forEach(child=>{  
+    const item = child.val();  
+    const jumlah = Number(item.jumlah);  
+    total += jumlah;  
+  
+    if(!rekap[item.nama])  
+      rekap[item.nama] = {pokok:0,wajib:0,sukarela:0};  
+  
+    rekap[item.nama][item.jenis] += jumlah;  
+  });  
+  
+  anggotaData = rekap;  
+  
+  for(const nama in rekap){  
+    const totalAnggota =  
+      rekap[nama].pokok +  
+      rekap[nama].wajib +  
+      rekap[nama].sukarela;  
+  
+    const card = document.createElement("div");  
+    card.className = "anggota-card";  
+    card.innerHTML = `  
+      <div class="anggota-card-row"><b>${nama}</b></div>  
+      <div class="anggota-card-row"><span>Pokok</span><span>Rp ${rekap[nama].pokok.toLocaleString("id-ID")}</span></div>  
+      <div class="anggota-card-row"><span>Wajib</span><span>Rp ${rekap[nama].wajib.toLocaleString("id-ID")}</span></div>  
+      <div class="anggota-card-row"><span>Sukarela</span><span>Rp ${rekap[nama].sukarela.toLocaleString("id-ID")}</span></div>  
+      <div class="anggota-card-row"><b>Total</b><b>Rp ${totalAnggota.toLocaleString("id-ID")}</b></div>  
+    `;  
+    container.appendChild(card);  
+  }  
+  
+  document.getElementById("totalSimpanan").innerText =  
+    total.toLocaleString("id-ID");  
+});  
+  
+/* SIMPAN SIMPANAN */  
+document.getElementById("btnSimpan").addEventListener("click", async ()=>{  
+  const select = document.getElementById("anggotaSelect");  
+  if(!select.value) return alert("Pilih anggota dulu");  
+  
+  const nama = select.options[select.selectedIndex].text;  
+  const jenis = document.getElementById("jenis").value;  
+  const jumlah = Number(document.getElementById("jumlah").value);  
+  const ket = document.getElementById("keterangan").value;  
+  
+  if(!jumlah || jumlah<=0)  
+    return alert("Jumlah tidak valid");  
+  
+  await push(simpananRef,{  
+    anggotaId: select.value,  
+    nama,  
+    jenis,  
+    jumlah,  
+    keterangan:ket,  
+    tanggal:new Date().toLocaleString()  
+  });  
+  
+  // Kas hanya masuk  
+  await push(kasRef,{  
+    sumber:`Simpanan ${jenis} - ${nama}`,  
+    jumlah:jumlah,  
+    tanggal:new Date().toLocaleString()  
+  });  
+  
+  document.getElementById("jumlah").value="";  
+  document.getElementById("keterangan").value="";  
+});  
+  /* EXPORT PDF + LOGO */
+document.getElementById("btnPDF").addEventListener("click", async ()=>{
 
-  <div class="card">
-    <h3>Data Simpanan</h3>
-    <div id="cardContainer"></div>
-  </div>
+  if(Object.keys(anggotaData).length === 0){
+    alert("Data simpanan belum tersedia");
+    return;
+  }
 
-</div>
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-<script type="module" src="js/simpanan.js"></script>
-</body>
-</html>
+  // === LOAD LOGO ===
+  const img = new Image();
+  img.src = "img/icon-192.png";
+
+  await new Promise(resolve=>{
+    img.onload = resolve;
+  });
+
+  // Tambahkan logo (posisi kiri atas)
+  doc.addImage(img, "PNG", 15, 10, 20, 20);
+
+  // === HEADER ===
+  doc.setFontSize(16);
+  doc.text("KOPERASI ARFA DRIVER",105,18,{align:"center"});
+
+  doc.setFontSize(12);
+  doc.text("LAPORAN SIMPANAN ANGGOTA",105,25,{align:"center"});
+
+  doc.setFontSize(10);
+  doc.text("Tanggal Cetak : " + new Date().toLocaleDateString("id-ID"),105,31,{align:"center"});
+
+  const columns = ["Anggota","Pokok","Wajib","Sukarela","Total"];
+  const rows = [];
+  let grandTotal = 0;
+
+  for(const nama in anggotaData){
+
+    const pokok = anggotaData[nama].pokok || 0;
+    const wajib = anggotaData[nama].wajib || 0;
+    const sukarela = anggotaData[nama].sukarela || 0;
+    const total = pokok + wajib + sukarela;
+
+    grandTotal += total;
+
+    rows.push([
+      nama,
+      "Rp " + pokok.toLocaleString("id-ID"),
+      "Rp " + wajib.toLocaleString("id-ID"),
+      "Rp " + sukarela.toLocaleString("id-ID"),
+      "Rp " + total.toLocaleString("id-ID")
+    ]);
+  }
+
+  doc.autoTable({
+    head:[columns],
+    body:rows,
+    startY:40,
+    theme:"grid",
+    styles:{fontSize:9}
+  });
+
+  doc.setFontSize(11);
+  doc.text(
+    "Total Keseluruhan : Rp " + grandTotal.toLocaleString("id-ID"),
+    14,
+    doc.lastAutoTable.finalY + 10
+  );
+
+  doc.save("laporan_simpanan.pdf");
+});
+window.kembali = ()=>{window.location.href="dashboard.html";}  
+  </script>
+</body>  
+</html>  

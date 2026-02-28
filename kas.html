@@ -1,288 +1,384 @@
-<!DOCTYPE html>  
-<html lang="id">  
-<head>  
-<meta charset="UTF-8">  
-<meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>Kas Koperasi</title>  <style>  
-body{  
-  font-family:Arial;  
-  margin:0;  
-  background:#f4f6f9;  
-  font-size:14px;  
-}  
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  
+  <title>Kas Koperasi</title>
+
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  background:#f4f6f9;
+  font-size:14px;
+}
+
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+  .brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+.container{ padding:15px; }
+
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:10px;
+  box-shadow:0 3px 8px rgba(0,0,0,.08);
+}
+
+input,select{
+  width:100%;
+  padding:8px;
+  margin-bottom:8px;
+}
+
+button{
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  background:#1e90ff;
+  color:white;
+  cursor:pointer;
+}
+
+.total{ font-weight:bold; font-size:16px; }
+
+.row{
+  display:flex;
+  justify-content:space-between;
+}
+
+.transaksi{
+  border-bottom:1px solid #ddd;
+  padding:8px 0;
+}
+
+.masuk{ color:green; font-weight:bold; }
+.keluar{ color:red; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+  <header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+     <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+     </div>
     
-/* HEADER */  
-header{  
-  background: linear-gradient(to right, #1e90ff, #0f3057);  
-  color:white;  
-  padding:14px 20px;  
-  display:flex;  
-  justify-content:space-between;  
-  align-items:center;  
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);  
-}  
+       <button onclick="window.location='dashboard.html'">Kembali</button>
+   <button onclick="exportPDF()">Export PDF</button>
+  </div>
+  </header>
+
+
+<div class="container">
+
+  <!-- SALDO -->
+  <div class="card total">
+    <div>💵 Cash : Rp <span id="saldoCash">0</span></div>
+    <div>🏦 Bank : Rp <span id="saldoBank">0</span></div>
+    <hr>
+    <div>💰 Total : Rp <span id="saldoTotal">0</span></div>
+  </div>
+
+  <!-- INPUT MANUAL -->
+  <div class="card" id="cardInput">
+    <h3>Input Kas Manual</h3>
+
+    <select id="sumberKas">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+
+    <select id="tipe">
+      <option value="masuk">Kas Masuk</option>
+      <option value="keluar">Kas Keluar</option>
+    </select>
+
+    <input type="number" id="jumlah" placeholder="Jumlah">
+    <input type="text" id="keterangan" placeholder="Keterangan">
+
+    <button id="btnSimpan">Simpan</button>
+  </div>
+
+  <!-- RIWAYAT -->
+  <div class="card">
+    <h3>Riwayat Transaksi</h3>
+    <div id="riwayat"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const kasRef = ref(db,"koperasi/kas");
+
+/* FORMAT RUPIAH */
+function formatRp(n){
+  return Number(n||0).toLocaleString("id-ID");
+}
+
+/* SIMPAN MANUAL */
+document.getElementById("btnSimpan").addEventListener("click", async ()=>{
+
+  const ket = data.keterangan ?? "-";
+const sumber = data.sumberKas ?? "-";
+const tipe = data.tipe ?? "-";
   
-.brand{  
-  display:flex;  
-  align-items:center;  
-  gap:10px;  
-}  
-  
-.brand img{  
-  width:42px;  
-  height:42px;  
-  border-radius:50%;  
-  object-fit:cover;  
-}  
-  
-.brand-text .subtitle{  
-  font-size:12px;  
-  opacity:0.9;  
-}  
-  
-.brand-text .title{  
-  font-size:16px;  
-  font-weight:bold;  
-}  
-  
-.user-section{  
-  position:relative;  
-  cursor:pointer;  
-  font-size:13px;  
-}  
-  
-.dropdown-menu{  
-  display:none;  
-  position:absolute;  
-  right:0;  
-  top:40px;  
-  background:white;  
-  color:#333;  
-  border-radius:10px;  
-  box-shadow:0 5px 15px rgba(0,0,0,0.2);  
-  overflow:hidden;  
-  min-width:130px;  
-}  
-  
-.dropdown-menu div{  
-  padding:10px;  
-  font-weight:bold;  
-}  
-  
-.dropdown-menu div:hover{  
-  background:#f0f0f0;  
-}  
-    
-    
-.container{ padding:15px; }  
-.card{  
-  background:white;  
-  padding:15px;  
-  margin-bottom:15px;  
-  border-radius:10px;  
-  box-shadow:0 3px 8px rgba(0,0,0,.08);  
-}  
-input,select{  
-  width:100%;  
-  padding:8px;  
-  margin-bottom:8px;  
-}  
-button{  
-  padding:8px 12px;  
-  border:none;  
-  border-radius:6px;  
-  background:#1e90ff;  
-  color:white;  
-  cursor:pointer;  
-}  
-.total{  
-  font-weight:bold;  
-  font-size:16px;  
-}  
-.row{  
-  display:flex;  
-  justify-content:space-between;  
-  margin-bottom:5px;  
-}  
-.transaksi{  
-  border-bottom:1px solid #ddd;  
-  padding:8px 0;  
-}  
-.masuk{ color:green; font-weight:bold; }  
-.keluar{ color:red; font-weight:bold; }  
-  </style>  
-  
-</head>  
-<body>  
-  <header>  
-  <div class="brand">  
-    <img src="img/icon-192.png">  
-    <div class="brand-text">  
-      <div class="subtitle">Koperasi</div>  
-      <div class="title">ARFA DRIVER</div>  
-    </div>  
-  </div>  
-  <div>💰 Kas Koperasi</div>  
-  <button onclick="window.location='dashboard.html'">Kembali</button>  
-</header>  
-  
-  <div class="container">    <!-- SALDO -->    <div class="card total">  
-    <div>💵 Cash : Rp <span id="saldoCash">0</span></div>  
-    <div>🏦 Bank : Rp <span id="saldoBank">0</span></div>  
-    <hr>  
-    <div>💰 Total : Rp <span id="saldoTotal">0</span></div>  
-  </div>    
-    
-    <!-- INPUT -->    
-    <div class="card" id="cardInput">
-      <h3>Input Kas Manual</h3>
-      <select id="sumberKas">
-        <option value="cash">Cash</option>
-        <option value="bank">Bank</option>
-        </select>
-      
-      <select id="tipe">
-        <option value="masuk">Kas Masuk</option>
-        <option value="keluar">Kas Keluar</option>
-        </select>
-      
-      <input type="number" id="jumlah" placeholder="Jumlah">
-      <input type="text" id="keterangan" placeholder="Keterangan">
-      <button id="btnSimpan">Simpan</button>
-      
-    </div>    
-    
-    <!-- RIWAYAT -->   
-    <div class="card">  
-    <h3>Riwayat Transaksi</h3>  
-    <div id="riwayat"></div>  
-    </div>  
-  </div>  
-  <script type="module">  
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";  
-import { getDatabase, ref, push, onValue }   
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";  
-  
-/* ===== CONFIG FIREBASE ===== */  
-const firebaseConfig = {  
-  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",  
-  authDomain: "arfa-c7dee.firebaseapp.com",  
-  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",  
-  projectId: "arfa-c7dee",  
-  storageBucket: "arfa-c7dee.firebasestorage.app",  
-  messagingSenderId: "468058520812",  
-  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"  
-};  
-  
-const app = initializeApp(firebaseConfig);  
-const db = getDatabase(app);  
-const kasRef = ref(db,"koperasi/kas");  
-  
-/* ===== ROLEBASE ===== */  
-const username = localStorage.getItem("user");  
-const role = localStorage.getItem("role") || "user";  
-if(!username) window.location.href="index.html";  
-  
-/* Hanya admin bisa input kas */  
-if(role !== "admin") document.getElementById("cardInput").style.display = "none";  
-  
-/* ================= SIMPAN ================= */  
-document.getElementById("btnSimpan")?.addEventListener("click", async ()=>{  
-  
-  const sumberKas = document.getElementById("sumberKas").value;  
-  const tipe = document.getElementById("tipe").value;  
-  const jumlah = Number(document.getElementById("jumlah").value);  
-  const ket = document.getElementById("keterangan").value;  
-  
-  if(!jumlah || jumlah<=0){  
-    alert("Jumlah wajib diisi");  
-    return;  
-  }  
-  
-  await push(kasRef,{  
-    tipe,  
-    kategori:"manual",  
-    sumberKas,  
-    jumlah,  
-    keterangan: ket || "-",  
-    tanggal: Date.now()  
-  });  
-  
-  document.getElementById("jumlah").value="";  
-  document.getElementById("keterangan").value="";  
-});  
-  
-/* ================= HITUNG & TAMPIL ================= */  
-onValue(kasRef, snapshot => {  
-  
-  let masukCash=0, keluarCash=0;  
-  let masukBank=0, keluarBank=0;  
-  
-  const riwayatDiv = document.getElementById("riwayat");  
-  riwayatDiv.innerHTML="";  
-  
-  if(snapshot.exists()){  
-    const data = snapshot.val();  
-  
-    for(const k in data){  
-      const i = data[k];  
-      const jumlah = Number(i.jumlah) || 0;  
-      const tipe = i.tipe || "masuk";  
-      const sumberKas = i.sumberKas || "cash";  
-  
-      // Tanggal aman  
-      let tanggalObj;  
-      if(typeof i.tanggal === "number") tanggalObj = new Date(i.tanggal);  
-      else tanggalObj = new Date(i.tanggal || Date.now());  
-      const tanggalStr = isNaN(tanggalObj) ? "-" : tanggalObj.toLocaleString();  
-  
-      // Hitung saldo  
-      if(sumberKas==="cash"){  
-        if(tipe==="masuk") masukCash+=jumlah;  
-        else keluarCash+=jumlah;  
-      }  
-  
-      if(sumberKas==="bank"){  
-        if(tipe==="masuk") masukBank+=jumlah;  
-        else keluarBank+=jumlah;  
-      }  
-  
-      // TAMPIL RIWAYAT  
-      const div = document.createElement("div");  
-      div.className="transaksi";  
-  
-      div.innerHTML=`  
-        <div class="row">  
-          <div>  
-            <span class="${tipe}">  
-              ${tipe==="masuk" ? "MASUK" : "KELUAR"}  
-            </span>  
-            (${sumberKas.toUpperCase()})  
-          </div>  
-          <div class="${tipe}">  
-            Rp ${jumlah.toLocaleString("id-ID")}  
-          </div>  
-        </div>  
-        <div>${i.keterangan} - ${tanggalStr}</div>  
-      `;  
-  
-      riwayatDiv.prepend(div);  
-    }  
-  }  
-  
-  const saldoCash = masukCash - keluarCash;  
-  const saldoBank = masukBank - keluarBank;  
-  const total = saldoCash + saldoBank;  
-  
-  document.getElementById("saldoCash").innerText =  
-    saldoCash.toLocaleString("id-ID");  
-  
-  document.getElementById("saldoBank").innerText =  
-    saldoBank.toLocaleString("id-ID");  
-  
-  document.getElementById("saldoTotal").innerText =  
-    total.toLocaleString("id-ID");  
-});  
-  </script>  
-</body>  
-</html>  
+  if(!jumlah || jumlah<=0){
+    alert("Jumlah wajib diisi");
+    return;
+  }
+
+  await push(kasRef,{
+    sumberKas: sumberKas,
+    tipe: tipe,
+    jumlah: jumlah,
+    keterangan: ket || "-",
+    tanggal: Date.now()
+  });
+
+  document.getElementById("jumlah").value="";
+  document.getElementById("keterangan").value="";
+});
+
+/* LOAD DATA */
+onValue(kasRef, snapshot => {
+
+  let masukCash=0, keluarCash=0;
+  let masukBank=0, keluarBank=0;
+
+  const riwayatDiv = document.getElementById("riwayat");
+  riwayatDiv.innerHTML="";
+
+  if(snapshot.exists()){
+
+    const data = Object.entries(snapshot.val());
+
+    // SORT TERBARU
+    data.sort((a,b)=>{
+      const tglA = Number(a[1]?.tanggal) || 0;
+      const tglB = Number(b[1]?.tanggal) || 0;
+      return tglB - tglA;
+    });
+
+    data.forEach(([key,i])=>{
+
+      const jumlah = Number(i?.jumlah) || 0;
+      const tipe = i?.tipe || "masuk";
+      const sumberKas = i?.sumberKas || i?.sumber || "cash";
+
+      let tanggalStr = "-";
+      if(i?.tanggal){
+        const tglObj = new Date(Number(i.tanggal) || i.tanggal);
+        if(!isNaN(tglObj)){
+          tanggalStr = tglObj.toLocaleString("id-ID");
+        }
+      }
+
+      // HITUNG SALDO
+      if(sumberKas==="cash"){
+        if(tipe==="masuk") masukCash+=jumlah;
+        else keluarCash+=jumlah;
+      }
+
+      if(sumberKas==="bank"){
+        if(tipe==="masuk") masukBank+=jumlah;
+        else keluarBank+=jumlah;
+      }
+
+      const div = document.createElement("div");
+      div.className="transaksi";
+
+      div.innerHTML=`
+        <div class="row">
+          <div>
+            <span class="${tipe}">
+              ${tipe==="masuk" ? "MASUK" : "KELUAR"}
+            </span>
+            (${sumberKas.toUpperCase()})
+          </div>
+          <div class="${tipe}">
+            Rp ${formatRp(jumlah)}
+          </div>
+        </div>
+        <div>${i?.keterangan || "-"} - ${tanggalStr}</div>
+      `;
+
+      riwayatDiv.appendChild(div);
+    });
+  }
+
+  const saldoCash = masukCash - keluarCash;
+  const saldoBank = masukBank - keluarBank;
+  const total = saldoCash + saldoBank;
+
+  document.getElementById("saldoCash").innerText = formatRp(saldoCash);
+  document.getElementById("saldoBank").innerText = formatRp(saldoBank);
+  document.getElementById("saldoTotal").innerText = formatRp(total);
+
+});
+  // ===== EXPORT PDF KAS =====
+// ===== EXPORT PDF KAS (Masuk & Keluar Terpisah) =====
+window.exportPDF = async function(){
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // LOAD LOGO
+  const img = new Image();
+  img.src = "img/icon-192.png";
+
+  await new Promise(resolve=>{
+    img.onload = resolve;
+  });
+
+  doc.addImage(img,"PNG",15,10,22,22);
+
+  // HEADER
+  doc.setFontSize(16);
+  doc.text("KOPERASI ARFA DRIVER",105,18,{align:"center"});
+
+  doc.setFontSize(13);
+  doc.text("LAPORAN KAS KOPERASI",105,25,{align:"center"});
+
+  const tanggalCetak = new Date().toLocaleDateString("id-ID");
+  doc.setFontSize(10);
+  doc.text(`Tanggal Cetak : ${tanggalCetak}`,190,18,{align:"right"});
+
+  // Ambil data terbaru
+  const snapshot = await new Promise(resolve=>{
+    onValue(kasRef, snap=>resolve(snap), {onlyOnce:true});
+  });
+
+  const rows = [];
+
+  let masukCash=0, keluarCash=0;
+  let masukBank=0, keluarBank=0;
+
+  if(snapshot.exists()){
+    const data = Object.values(snapshot.val());
+
+    // SORT TANGGAL
+    data.sort((a,b)=>{
+      return (Number(a.tanggal)||0) - (Number(b.tanggal)||0);
+    });
+
+    data.forEach(i=>{
+      const jumlah = Number(i?.jumlah)||0;
+      const tipe = i?.tipe||"masuk";
+      const sumberKas = i?.sumberKas||"cash";
+
+      const tglObj = new Date(Number(i.tanggal)||i.tanggal);
+      const tanggalStr = !isNaN(tglObj) ? 
+        tglObj.toLocaleDateString("id-ID") : "-";
+
+      let masuk = "";
+      let keluar = "";
+
+      if(tipe==="masuk"){
+        masuk = "Rp " + formatRp(jumlah);
+        if(sumberKas==="cash") masukCash+=jumlah;
+        else masukBank+=jumlah;
+      }else{
+        keluar = "Rp " + formatRp(jumlah);
+        if(sumberKas==="cash") keluarCash+=jumlah;
+        else keluarBank+=jumlah;
+      }
+
+      rows.push([
+        tanggalStr,
+        i?.keterangan || "-",
+        masuk,
+        keluar,
+        sumberKas.toUpperCase()
+      ]);
+    });
+  }
+
+  doc.autoTable({
+    head:[["Tanggal","Keterangan","Kas Masuk","Kas Keluar","Sumber"]],
+    body:rows,
+    startY:40,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[30,144,255]}
+  });
+
+  const saldoCash = masukCash - keluarCash;
+  const saldoBank = masukBank - keluarBank;
+  const total = saldoCash + saldoBank;
+
+  doc.setFontSize(11);
+  doc.text(
+    `Saldo Cash : Rp ${formatRp(saldoCash)}`,
+    14,
+    doc.lastAutoTable.finalY + 10
+  );
+
+  doc.text(
+    `Saldo Bank : Rp ${formatRp(saldoBank)}`,
+    14,
+    doc.lastAutoTable.finalY + 16
+  );
+
+  doc.text(
+    `Total Saldo : Rp ${formatRp(total)}`,
+    14,
+    doc.lastAutoTable.finalY + 22
+  );
+
+  doc.save(`Laporan_Kas_${tanggalCetak.replace(/\//g,"-")}.pdf`);
+};
+</script>
+
+</body>
+</html>

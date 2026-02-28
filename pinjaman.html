@@ -3,91 +3,111 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pinjaman</title>
-
+<title>Koperasi - Pinjaman</title>
 <style>
-/* HEADER */
-header{
-  background: linear-gradient(to right, #1e90ff, #0f3057);
-  color:white;
-  padding:14px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);
-}
-.brand{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.brand img{width:42px;height:42px;border-radius:50%;object-fit:cover;}
-.brand-text .subtitle{font-size:12px;opacity:0.9;}
-.brand-text .title{font-size:16px;font-weight:bold;}
-body{font-family:Arial,sans-serif;margin:0;background:#f4f6f9;}
-.container{padding:14px;}
-.card{background:white;padding:14px;margin-bottom:14px;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.1);}
-input,select{padding:8px;margin-bottom:10px;width:100%;border-radius:6px;border:1px solid #ccc;}
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+.container{padding:10px;}
+input,select{padding:6px;margin-bottom:8px;width:100%;}
+button{padding:6px 10px;margin-top:5px;cursor:pointer;border:none;border-radius:5px;background:#1e90ff;color:white;}
 button:disabled{background:#aaa;cursor:not-allowed;}
-button{padding:6px 8px;font-size:12px;border:none;border-radius:6px;background:#1e90ff;color:white;cursor:pointer;}
-.total{font-size:18px;font-weight:bold;margin-bottom:10px;}
-.anggota-card{background:#fff;border-left:5px solid #1e90ff;margin-bottom:15px;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
-.anggota-card-row{display:flex;justify-content:space-between;margin-bottom:6px;}
-.anggota-card-row span:first-child{font-weight:bold;color:#333;}
-.transaksi{margin-left:10px;margin-top:5px;padding-left:5px;border-left:2px solid #ccc;}
-.transaksi div{display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px;}
-.transaksi div span:first-child{font-weight:bold;}
-.transaksi-item{display:grid;grid-template-columns: 1fr 1fr 1.5fr 1fr;font-size:10px;padding:4px 0;border-bottom:1px dashed #ddd;}
-.transaksi-item span:nth-child(2){color:red;font-weight:bold;text-align:right;}
-</style>
+.status{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:bold;color:white;}
+.detail-pinjam{display:none;margin-top:8px;background:#f9f9f9;padding:8px;border-radius:6px;}
+.total-summary{margin-top:10px;font-weight:bold;}
+/* HEADER */  
+header{  
+  background: linear-gradient(to right, #1e90ff, #0f3057);  
+  color:white;  
+  padding:14px 20px;  
+  display:flex;  
+  justify-content:space-between;  
+  align-items:center;  
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);  
+}  
+  
+.brand{  
+  display:flex;  
+  align-items:center;  
+  gap:10px;  
+}  
+  
+.brand img{  
+  width:42px;  
+  height:42px;  
+  border-radius:50%;  
+  object-fit:cover;  
+}  
+  
+.brand-text .subtitle{  
+  font-size:12px;  
+  opacity:0.9;  
+}  
+  
+.brand-text .title{  
+  font-size:16px;  
+  font-weight:bold;  
+}  
+  
+.user-section{  
+  position:relative;  
+  cursor:pointer;  
+  font-size:13px;  
+}  
+  .card{text-align:center;  }
+  </style>
 
+<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 </head>
 <body>
-
-<header>
-  <div class="brand">
-    <img src="img/icon-192.png">
-    <div class="brand-text">
-      <div class="subtitle">Koperasi</div>
-      <div class="title">ARFA DRIVER</div>
-    </div>
+<header>  
+  <div class="brand">  
+    <img src="img/icon-192.png">  
+    <div class="brand-text">  
+      <div class="subtitle">Koperasi</div>  
+      <div class="title">ARFA DRIVER</div>  
+    </div>  
+    <button onclick="window.location='dashboard.html'">Kembali</button>  
+  <button onclick="exportPDF()">Export PDF</button>
+   </div>
+  </header>   
+  
+  
+  <div class = "card">
+  <h3>DATA PINJAMAN ANGGOTA</h3>
   </div>
-  <div>📄 Pinjaman</div>
-  <div><button onclick="window.location='dashboard.html'">Kembali</button></div>
-</header>
+    <div class="container">
+   <div class="total-summary">
+    Total Pinjaman: Rp <span id="totalPinjaman">0</span>
+  </div>
 
-<div class="container">
-
-  <!-- Form Pencairan Pinjaman -->
-  <div class="card" id="formPinjaman">
-    <h3>Form Pinjaman</h3>
-    <select id="anggotaPinjamanSelect"></select>
+  <!-- Form Tambah Pinjaman -->
+  <div id="formPinjaman" class="card">
+    <h3>Tambah Pinjaman</h3>
+    <input type="text" id="namaPinjaman" placeholder="Nama Anggota / Nasabah">
     <input type="number" id="jumlahPinjaman" placeholder="Jumlah Pinjaman">
-    <input type="text" id="ketPinjaman" placeholder="Keterangan (opsional)">
-    <select id="sumberPinjaman">
+    <select id="metodePinjaman">
       <option value="cash">Cash</option>
       <option value="bank">Bank</option>
     </select>
-    <button id="btnPinjaman">Cairkan Pinjaman</button>
-    <button id="btnPDF">Export PDF</button>
+    <input type="text" id="keteranganPinjaman" placeholder="Keterangan (opsional)">
+    <button onclick="tambahPinjaman()">Simpan Pinjaman</button>
   </div>
 
-  <!-- Data Pinjaman -->
-  <div class="card">
-    <h3>Data Pinjaman Anggota</h3>
-    <div id="cardContainer"></div>
-  </div>
+  <!-- Daftar Pinjaman -->
+  <div id="cardsContainer"></div>
+
+  <!-- Total -->
+ 
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* ===== CONFIG ===== */
+/* Firebase Config */
 const firebaseConfig = {
   apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
   authDomain: "arfa-c7dee.firebaseapp.com",
@@ -100,208 +120,150 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* Proteksi login & role */
-const username = localStorage.getItem("user");
-const role = localStorage.getItem("role") || "user";
-if(!username) window.location.href="index.html";
-
-/* References Firebase */
-const anggotaRef = ref(db,"koperasi/anggota");
 const pinjamanRef = ref(db,"koperasi/pinjaman");
 const kasRef = ref(db,"koperasi/kas");
 
-/* Load dropdown anggota */
-const anggotaPinjamanSelect = document.getElementById("anggotaPinjamanSelect");
-onValue(anggotaRef, snapshot=>{
-  anggotaPinjamanSelect.innerHTML = "<option value=''>Pilih Anggota</option>";
-  snapshot.forEach(child=>{
-    const data = child.val();
-    const option = document.createElement("option");
-    option.value = child.key;
-    option.textContent = data.nama;
-    anggotaPinjamanSelect.appendChild(option);
-  });
-});
+/* Proteksi role admin */
+const role = localStorage.getItem("role") || "user";
+if(role !== "admin"){
+  document.getElementById("formPinjaman").style.display = "none";
+}
 
-/* Load & render pinjaman */
-let anggotaData = {};
-async function loadPinjaman(selectedAnggotaId = "") {
-  const container = document.getElementById("cardContainer");
-  container.innerHTML = "";
-  let snap = await get(pinjamanRef);
-  let rekap = {};
-  
-  if(snap.exists()){
-    snap.forEach(child=>{
-      const item = child.val();
-      if(!rekap[item.anggotaId]) rekap[item.anggotaId] = {nama:item.nama, jumlah:0, transaksi:[]};
-      rekap[item.anggotaId].jumlah += Number(item.jumlah);
-      rekap[item.anggotaId].transaksi.push({
-        jumlah: Number(item.jumlah),
-        keterangan: item.keterangan || `Pinjaman - ${item.nama}`,
-        tanggal: item.tanggal || "-",
-        sumber: item.sumber || "cash"
-      });
-    });
-  }
+function formatRp(n){return Number(n||0).toLocaleString("id-ID");}
 
-  anggotaData = rekap;
+let dataPinjaman = {};
 
-  let anggotaToShow = {};
-  if(selectedAnggotaId && rekap[selectedAnggotaId]){
-    anggotaToShow[selectedAnggotaId] = rekap[selectedAnggotaId];
-  } else {
-    anggotaToShow = rekap;
-  }
+/* Render daftar pinjaman */
+/* Render daftar pinjaman (tanpa status + tambah tanggal) */
+function render(){
+  const container = document.getElementById("cardsContainer");
+  container.innerHTML="";
+  let total = 0;
 
-  for(const id in anggotaToShow){
-    const data = anggotaToShow[id];
+  for(const k in dataPinjaman){
+    const p = dataPinjaman[k];
+    total += Number(p.jumlah||0);
+
     const card = document.createElement("div");
-    card.className="anggota-card";
-
-    let html = `
-      <div class="anggota-card-row">
-        <span>Anggota:</span>
-        <span>${data.nama}</span>
+    card.className="card";
+    card.innerHTML=`
+      <h3 onclick="toggleDetail('${k}')">
+        ${p.nama}
+      </h3>
+      Tanggal Pinjam: ${p.tanggal || "-"}<br>
+      Jumlah Pinjaman: Rp ${formatRp(p.jumlah)}<br>
+      Metode: ${p.metode || "-"}<br>
+      Keterangan: ${p.keterangan || "-"}
+      <div id="detail-${k}" class="detail-pinjam">
+        Belum ada angsuran.
       </div>
-      <div class="anggota-card-row">
-        <span>Total Pinjaman:</span>
-        <span>Rp ${data.jumlah.toLocaleString("id-ID")}</span>
-      </div>
-      <div class="transaksi">
-        <div style="font-weight:bold;margin-bottom:6px;">Detail Transaksi:</div>
     `;
-
-    data.transaksi.forEach(t=>{
-      html += `
-        <div class="transaksi-item">
-          <span>${formatTanggal(t.tanggal)}</span>
-          <span>Rp ${t.jumlah.toLocaleString("id-ID")}</span>
-          <span>${t.keterangan} [${t.sumber}]</span>
-          <span>Keluar</span>
-        </div>
-      `;
-    });
-
-    html += `</div>`;
-    card.innerHTML = html;
     container.appendChild(card);
   }
-}
 
-anggotaPinjamanSelect.addEventListener("change", ()=>{
-  const selectedId = anggotaPinjamanSelect.value;
-  loadPinjaman(selectedId);
+  document.getElementById("totalPinjaman").innerText = formatRp(total);
+}
+/* 🔹 Realtime listener pinjaman */
+onValue(pinjamanRef,(snap)=>{
+  dataPinjaman = snap.exists()?snap.val():{};
+  render();
 });
-loadPinjaman();
 
-function formatTanggal(tgl){
-  const d = new Date(tgl);
-  if(isNaN(d)) return tgl;
-  return d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});
-}
+/* 🔹 Tambah pinjaman */
+window.tambahPinjaman=async function(){
+  if(role!=="admin"){alert("Tidak punya akses");return;}
 
-/* Pencairan pinjaman - hanya admin */
-const btnPinjaman = document.getElementById("btnPinjaman");
-if(role!=="admin") btnPinjaman.disabled=true;
-
-btnPinjaman.addEventListener("click", async ()=>{
-  const anggotaId = anggotaPinjamanSelect.value;
-  if(!anggotaId) return alert("Pilih anggota dulu");
-  const nama = anggotaPinjamanSelect.options[anggotaPinjamanSelect.selectedIndex].text;
+  const nama = document.getElementById("namaPinjaman").value.trim();
   const jumlah = Number(document.getElementById("jumlahPinjaman").value);
-  const ket = document.getElementById("ketPinjaman").value;
-  const sumber = document.getElementById("sumberPinjaman").value;
-  if(!jumlah || jumlah<=0) return alert("Jumlah pinjaman tidak valid");
+  const metode = document.getElementById("metodePinjaman").value;
+  const ket = document.getElementById("keteranganPinjaman").value.trim();
+  const tanggal = new Date().toLocaleString();
 
-  // Push pinjaman
-  await push(pinjamanRef,{
-    anggotaId: anggotaId,
+  if(!nama || !jumlah || jumlah<=0){alert("Data tidak valid"); return;}
+
+  // Simpan pinjaman
+  const newRef = await push(pinjamanRef,{
     nama: nama,
     jumlah: jumlah,
-    keterangan: ket || `Pinjaman - ${nama}`,
-    tanggal: new Date().toLocaleString(),
-    sumber: sumber
+    keterangan: ket,
+    metode: metode,
+    tanggal: tanggal,
+    lunas:false
   });
 
-  // Push ke kas agar keterangan muncul
+  // Simpan ke kas otomatis
   await push(kasRef,{
-    keterangan: ket || `Pinjaman - ${nama}`,
-    jumlah: jumlah,
-    tanggal: new Date().toLocaleString(),
-    tipe: "keluar",
-    sumberKas: sumber
+    tanggal: tanggal,
+    keterangan:`Pinjaman - ${nama}`,
+    jenis:"masuk",
+    cash: metode==="cash"?jumlah:0,
+    bank: metode==="bank"?jumlah:0
   });
 
+  alert("Pinjaman berhasil disimpan");
+  document.getElementById("namaPinjaman").value="";
   document.getElementById("jumlahPinjaman").value="";
-  document.getElementById("ketPinjaman").value="";
-  alert(`Pinjaman dicairkan ke ${sumber.toUpperCase()}!`);
-  loadPinjaman();
-});
+  document.getElementById("keteranganPinjaman").value="";
+};
+/* 🔹 Export PDF + Logo */
+window.exportPDF = async function(){
 
-/* Export PDF Pinjaman */
-document.getElementById("btnPDF").addEventListener("click", async ()=>{
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  const tanggalCetak = new Date().toLocaleDateString("id-ID");
-  const bulan = new Date().getMonth()+1;
-  const tahun = new Date().getFullYear();
-  const nomorDoc = `PINJ/${String(bulan).padStart(2,'0')}/${tahun}`;
+
+  // === LOAD LOGO ===
   const img = new Image();
-  img.src = "img/ims.png";
-  const selectedAnggotaId = anggotaPinjamanSelect.value;
+  img.src = "img/icon-192.png"; // pastikan path benar
 
-  img.onload = function(){
-    doc.addImage(img,"PNG",15,8,22,24);
-    doc.setFontSize(14); doc.setFont(undefined,"bold");
-    doc.text("KOPERASI DRIVER",105,15,{align:"center"});
-    doc.setFontSize(11); doc.setFont(undefined,"normal");
-    doc.text("ARFA KHALIFA",105,21,{align:"center"});
-    doc.text("LAPORAN PINJAMAN ANGGOTA",105,27,{align:"center"});
-    doc.setFontSize(9);
-    doc.text(`No: ${nomorDoc}`,180,15,{align:"right"});
-    doc.text(`Cetak: ${tanggalCetak}`,180,20,{align:"right"});
-    doc.line(10,38,200,38);
+  await new Promise(resolve=>{
+    img.onload = resolve;
+  });
 
-    const tableColumn=["Anggota","Tanggal","Jumlah","Keterangan","Sumber","Jenis"];
-    const tableRows=[];
-    let totalPinjaman = 0;
+  // Tambahkan logo
+  doc.addImage(img, "PNG", 15, 10, 22, 22);
 
-    const anggotaToPrint = selectedAnggotaId && anggotaData[selectedAnggotaId] 
-      ? { [selectedAnggotaId]: anggotaData[selectedAnggotaId] } 
-      : anggotaData;
+  // === HEADER ===
+  doc.setFontSize(16);
+  doc.text("KOPERASI ARFA DRIVER",105,18,{align:"center"});
 
-    for(const id in anggotaToPrint){
-      const data = anggotaToPrint[id];
-      data.transaksi.forEach(t=>{
-        totalPinjaman += t.jumlah;
-        tableRows.push([
-          data.nama,
-          t.tanggal,
-          "Rp "+t.jumlah.toLocaleString("id-ID"),
-          t.keterangan,
-          t.sumber,
-          "Keluar"
-        ]);
-      });
-    }
+  doc.setFontSize(13);
+  doc.text("LAPORAN PINJAMAN",105,25,{align:"center"});
 
-    doc.autoTable({
-      head:[tableColumn],
-      body:tableRows,
-      startY:45,
-      styles:{fontSize:8},
-      headStyles:{fillColor:[220,53,69]},
-      columnStyles:{2:{halign:"right"}}
-    });
+  const tanggalCetak = new Date().toLocaleDateString("id-ID");
+  doc.setFontSize(10);
+  doc.text(`Tanggal Cetak : ${tanggalCetak}`,190,18,{align:"right"});
 
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(11); doc.setFont(undefined,"bold");
-    doc.text("Total Pinjaman : Rp "+totalPinjaman.toLocaleString("id-ID"),14,finalY);
-    doc.save(`Laporan_Pinjaman_${tanggalCetak.replace(/\//g,"-")}.pdf`);
-  };
-});
+  // === TABEL DATA ===
+  const rows=[];
+  for(const k in dataPinjaman){
+    const p = dataPinjaman[k];
+    rows.push([
+      p.nama,
+      p.tanggal || "-",
+      `Rp ${formatRp(p.jumlah)}`,
+      p.metode || "-",
+      p.keterangan || "-"
+    ]);
+  }
+
+  doc.autoTable({
+    head:[["Nama","Tanggal Pinjam","Jumlah Pinjaman","Metode","Keterangan"]],
+    body:rows,
+    startY:40,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[30,144,255]}
+  });
+
+  doc.save(
+    `Laporan_Pinjaman_${tanggalCetak.replace(/\//g,"-")}.pdf`
+  );
+};
 </script>
-
 </body>
 </html>
+
+
+
+
+
+

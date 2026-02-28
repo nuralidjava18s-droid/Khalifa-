@@ -5,20 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Angsuran</title>
 <style>
-body{font-family:Arial;margin:0;background:#f4f6f9;}
-.container{padding:10px;}
-.card{background:white;padding:10px;margin-bottom:15px;border-radius:10px;font-size:13px;box-shadow:0 3px 10px rgba(0,0,0,0.05);}
-button{padding:6px 10px;margin-top:5px;margin-right:5px;cursor:pointer;border:none;border-radius:5px;background:#1e90ff;color:white;}
-input,select{padding:6px;margin-bottom:8px;width:100%;}
-.total{font-weight:bold;font-size:15px;}
-header{
+  header{
   background: linear-gradient(to right, #1e90ff, #0f3057);
   color:white;
   padding:14px 20px;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+  .brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+.container{padding:10px;}
+.card{background:white;padding:10px;margin-bottom:15px;border-radius:10px;font-size:13px;box-shadow:0 3px 10px rgba(0,0,0,0.05);}
+button{padding:6px 10px;margin-top:5px;margin-right:5px;cursor:pointer;border:none;border-radius:5px;background:#1e90ff;color:white;}
+input,select{padding:6px;margin-bottom:8px;width:100%;}
+.total{font-weight:bold;font-size:15px;}
+
 .status{
   padding:4px 8px;
   border-radius:6px;
@@ -26,6 +51,7 @@ header{
   font-weight:bold;
   color:white;
 }
+  h3{text-align:center}
 .detail-angsuran{
   display:none;
   margin-top:8px;
@@ -46,15 +72,23 @@ header{
 </head>
 <body>
 
-<header>
-  <div><b>ARFA DRIVER</b></div>
-  <div>🧾 Angsuran Pinjaman</div>
-  <div>
-    <button onclick="window.location='dashboard.html'">Kembali</button>
+  <header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+     <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+     </div>
+<button onclick="window.location='dashboard.html'">Kembali</button>
     <button onclick="exportPDF()">Export PDF</button>
   </div>
 </header>
-
+<!-- Total -->
+  <div class="total-summary">
+    Total Pinjaman Aktif: Rp <span id="totalPinjaman">0</span><br>
+    Total Angsuran Aktif: Rp <span id="totalAngsuran">0</span>
+  </div>
+</div>
 <div class="container">
 
   <!-- Form Tambah Angsuran -->
@@ -72,12 +106,7 @@ header{
   <!-- Daftar Pinjaman -->
   <div id="cardsContainer"></div>
 
-  <!-- Total -->
-  <div class="total-summary">
-    Total Pinjaman Aktif: Rp <span id="totalPinjaman">0</span><br>
-    Total Angsuran Aktif: Rp <span id="totalAngsuran">0</span>
-  </div>
-</div>
+  
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -236,46 +265,85 @@ window.toggleDetail=function(id){
 };
 
 // 🔹 Export PDF
-window.exportPDF=function(){
+window.exportPDF = async function(){
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.setFontSize(14);
-  doc.text("Laporan Angsuran Pinjaman",105,15,{align:"center"});
-  doc.setFontSize(10);
-  doc.text(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`,180,20,{align:"right"});
 
+  // ===== LOAD LOGO =====
+  const img = new Image();
+  img.src = "img/icon-192.png"; // pastikan path benar
+
+  await new Promise(resolve=>{
+    img.onload = resolve;
+  });
+
+  // Tambahkan logo
+  doc.addImage(img, "PNG", 15, 10, 22, 22);
+
+  // ===== HEADER =====
+  doc.setFontSize(16);
+  doc.text("KOPERASI ARFA DRIVER",105,18,{align:"center"});
+
+  doc.setFontSize(13);
+  doc.text("LAPORAN ANGSURAN PINJAMAN",105,25,{align:"center"});
+
+  const tanggalCetak = new Date().toLocaleDateString("id-ID");
+
+  doc.setFontSize(10);
+  doc.text(`Tanggal Cetak : ${tanggalCetak}`,190,18,{align:"right"});
+
+  // ===== DATA TABEL =====
   const rows=[];
+
   for(const k in dataPinjaman){
     const pin = dataPinjaman[k];
     let angsTotal = 0;
+
     for(const a in dataAngsuran){
       if(dataAngsuran[a].pinjamanId===k){
+
         angsTotal += Number(dataAngsuran[a].jumlah||0);
+        const sisa = pin.jumlah - angsTotal;
+        const status = sisa <= 0 ? "LUNAS" : "BELUM";
+
         rows.push([
           pin.nama,
           `Rp ${formatRp(pin.jumlah)}`,
-          `Rp ${formatRp(angsTotal)}`,
-          `Rp ${formatRp(pin.jumlah-angsTotal)}`,
+          status,
+          `Rp ${formatRp(sisa)}`,
           dataAngsuran[a].tanggal||"-",
           dataAngsuran[a].metode||"-",
-          dataAngsuran[a].jumlah
+          `Rp ${formatRp(dataAngsuran[a].jumlah)}`
         ]);
       }
     }
-    if(angsTotal===0){ // belum ada angsuran
-      rows.push([pin.nama, `Rp ${formatRp(pin.jumlah)}`, `Rp 0`, `Rp ${formatRp(pin.jumlah)}`, "-", "-", "-"]);
+
+    // Jika belum ada angsuran
+    if(angsTotal===0){
+      rows.push([
+        pin.nama,
+        `Rp ${formatRp(pin.jumlah)}`,
+        "BELUM",
+        `Rp ${formatRp(pin.jumlah)}`,
+        "-",
+        "-",
+        "-"
+      ]);
     }
   }
 
   doc.autoTable({
-    head:[["Nama","Total Pinjaman","Total Angsuran","Sisa","Tanggal Angsuran","Metode","Jumlah Angsuran"]],
+    head:[["Nama","Total Pinjaman","Status","Sisa","Tanggal Angsuran","Metode","Jumlah Angsuran"]],
     body:rows,
-    startY:30,
+    startY:40,
     styles:{fontSize:8},
     headStyles:{fillColor:[30,144,255]}
   });
 
-  doc.save(`Laporan_Angsuran_${new Date().toLocaleDateString().replace(/\//g,"-")}.pdf`);
+  doc.save(
+    `Laporan_Angsuran_${tanggalCetak.replace(/\//g,"-")}.pdf`
+  );
 };
 </script>
 
