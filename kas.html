@@ -118,8 +118,9 @@ button{
 
   <!-- INPUT MANUAL -->
   <div class="card" id="cardInput">
+    
     <h3>Input Kas Manual</h3>
-
+   
     <select id="sumberKas">
       <option value="cash">Cash</option>
       <option value="bank">Bank</option>
@@ -129,7 +130,8 @@ button{
       <option value="masuk">Kas Masuk</option>
       <option value="keluar">Kas Keluar</option>
     </select>
-
+ 
+    <input type="date" id="tanggal">
     <input type="number" id="jumlah" placeholder="Jumlah">
     <input type="text" id="keterangan" placeholder="Keterangan">
 
@@ -146,7 +148,7 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue } 
+import { getDatabase, ref, push, onValue, update,remove, get} 
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
@@ -162,6 +164,22 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const kasRef = ref(db,"koperasi/kas");
 
+/* 🔥 TAMBAHKAN INI */
+let editKey = null;
+// ===== ROLE BASE =====
+const role = localStorage.getItem("role") || "user";
+
+function isAdmin(){
+  return role === "admin";
+}
+
+// Sembunyikan form jika bukan admin
+document.addEventListener("DOMContentLoaded", ()=>{
+  if(!isAdmin()){
+    document.getElementById("cardInput").style.display = "none";
+  }
+});
+  
 /* FORMAT RUPIAH */
 function formatRp(n){
   return Number(n||0).toLocaleString("id-ID");
@@ -170,27 +188,62 @@ function formatRp(n){
 /* SIMPAN MANUAL */
 document.getElementById("btnSimpan").addEventListener("click", async ()=>{
 
-  const ket = data.keterangan ?? "-";
-const sumber = data.sumberKas ?? "-";
-const tipe = data.tipe ?? "-";
-  
+  const sumberKas = document.getElementById("sumberKas").value;
+  const tipe = document.getElementById("tipe").value;
+  const jumlah = Number(document.getElementById("jumlah").value);
+  const ket = document.getElementById("keterangan").value;
+  const tanggalInput = document.getElementById("tanggal").value;
+
   if(!jumlah || jumlah<=0){
     alert("Jumlah wajib diisi");
     return;
   }
 
-  await push(kasRef,{
-    sumberKas: sumberKas,
-    tipe: tipe,
-    jumlah: jumlah,
-    keterangan: ket || "-",
-    tanggal: Date.now()
-  });
+  if(!tanggalInput){
+    alert("Tanggal wajib diisi");
+    return;
+  }
 
+  const tanggal = new Date(tanggalInput).getTime();
+
+  // 🔥 MODE UPDATE
+  if(editKey){
+    const kasItemRef = ref(db, "koperasi/kas/" + editKey);
+
+    await update(kasItemRef,{
+      sumberKas,
+      tipe,
+      jumlah,
+      keterangan: ket || "-",
+      tanggal
+    });
+
+    editKey = null;
+    document.getElementById("btnSimpan").innerText = "Simpan";
+    alert("Data berhasil diupdate");
+  }
+
+    
+  // 🔥 MODE TAMBAH BARU
+  else{
+    await push(kasRef,{
+      sumberKas,
+      tipe,
+      jumlah,
+      keterangan: ket || "-",
+      tanggal
+    });
+
+    alert("Data berhasil ditambahkan");
+  }
+
+  // Reset form
   document.getElementById("jumlah").value="";
   document.getElementById("keterangan").value="";
+  document.getElementById("tanggal").value="";
 });
-
+  
+  
 /* LOAD DATA */
 onValue(kasRef, snapshot => {
 
@@ -200,64 +253,81 @@ onValue(kasRef, snapshot => {
   const riwayatDiv = document.getElementById("riwayat");
   riwayatDiv.innerHTML="";
 
-  if(snapshot.exists()){
-
-    const data = Object.entries(snapshot.val());
-
-    // SORT TERBARU
-    data.sort((a,b)=>{
-      const tglA = Number(a[1]?.tanggal) || 0;
-      const tglB = Number(b[1]?.tanggal) || 0;
-      return tglB - tglA;
-    });
-
-    data.forEach(([key,i])=>{
-
-      const jumlah = Number(i?.jumlah) || 0;
-      const tipe = i?.tipe || "masuk";
-      const sumberKas = i?.sumberKas || i?.sumber || "cash";
-
-      let tanggalStr = "-";
-      if(i?.tanggal){
-        const tglObj = new Date(Number(i.tanggal) || i.tanggal);
-        if(!isNaN(tglObj)){
-          tanggalStr = tglObj.toLocaleString("id-ID");
-        }
-      }
-
-      // HITUNG SALDO
-      if(sumberKas==="cash"){
-        if(tipe==="masuk") masukCash+=jumlah;
-        else keluarCash+=jumlah;
-      }
-
-      if(sumberKas==="bank"){
-        if(tipe==="masuk") masukBank+=jumlah;
-        else keluarBank+=jumlah;
-      }
-
-      const div = document.createElement("div");
-      div.className="transaksi";
-
-      div.innerHTML=`
-        <div class="row">
-          <div>
-            <span class="${tipe}">
-              ${tipe==="masuk" ? "MASUK" : "KELUAR"}
-            </span>
-            (${sumberKas.toUpperCase()})
-          </div>
-          <div class="${tipe}">
-            Rp ${formatRp(jumlah)}
-          </div>
-        </div>
-        <div>${i?.keterangan || "-"} - ${tanggalStr}</div>
-      `;
-
-      riwayatDiv.appendChild(div);
-    });
+  if(!snapshot.exists()){
+    document.getElementById("saldoCash").innerText = "0";
+    document.getElementById("saldoBank").innerText = "0";
+    document.getElementById("saldoTotal").innerText = "0";
+    return;
   }
 
+  const data = Object.entries(snapshot.val());
+
+  // SORT TERBARU
+  data.sort((a,b)=>{
+    const tglA = Number(a[1]?.tanggal) || 0;
+    const tglB = Number(b[1]?.tanggal) || 0;
+    return tglB - tglA;
+  });
+
+  data.forEach(([key,i])=>{
+
+    if(!i) return;
+
+    const tglValue = i.tanggal ? Number(i.tanggal) : Date.now();
+
+    const jumlah = Number(i.jumlah) || 0;
+    const tipe = i.tipe || "masuk";
+    const sumberKas = i.sumberKas || "cash";
+
+    const tglObj = new Date(tglValue);
+    const tanggalStr = !isNaN(tglObj)
+      ? tglObj.toLocaleString("id-ID")
+      : "-";
+
+    if(sumberKas==="cash"){
+      if(tipe==="masuk") masukCash+=jumlah;
+      else keluarCash+=jumlah;
+    }
+
+    if(sumberKas==="bank"){
+      if(tipe==="masuk") masukBank+=jumlah;
+      else keluarBank+=jumlah;
+    }
+
+    const div = document.createElement("div");
+    div.className="transaksi";
+
+    div.innerHTML=`
+      <div class="row">
+        <div>
+          <span class="${tipe}">
+            ${tipe==="masuk" ? "MASUK" : "KELUAR"}
+          </span>
+          (${sumberKas.toUpperCase()})
+        </div>
+        <div class="${tipe}">
+          Rp ${formatRp(jumlah)}
+        </div>
+      </div>
+      <div>${i.keterangan || "-"} - ${tanggalStr}</div>
+      ${isAdmin() ? '<button class="btnEdit">Edit</button>' : ''}
+    `;
+    
+if(isAdmin()){
+ div.querySelector(".btnEdit").addEventListener("click", ()=>{
+      editKas(
+        key,
+        tipe,
+        sumberKas,
+        jumlah,
+        tglValue,
+        i.keterangan || "-"
+      );
+    });
+}
+    riwayatDiv.appendChild(div);
+  });
+  
   const saldoCash = masukCash - keluarCash;
   const saldoBank = masukBank - keluarBank;
   const total = saldoCash + saldoBank;
@@ -267,6 +337,95 @@ onValue(kasRef, snapshot => {
   document.getElementById("saldoTotal").innerText = formatRp(total);
 
 });
+  
+  window.editKas = function(
+  key, tipeLama, sumberLama, jumlahLama, tanggalLama, ketLama
+){
+
+  editKey = key;
+
+  document.getElementById("editTipe").value = tipeLama;
+  document.getElementById("editSumber").value = sumberLama;
+  document.getElementById("editJumlah").value = jumlahLama;
+  document.getElementById("editKet").value = ketLama;
+
+  let tglFinal;
+
+  if(tanggalLama){
+    tglFinal = new Date(Number(tanggalLama));
+  } else {
+    // 🔥 kalau data lama tidak punya tanggal
+    tglFinal = new Date(); // isi otomatis hari ini
+  }
+
+  const tglFormat = tglFinal.toISOString().split("T")[0];
+  document.getElementById("editTanggal").value = tglFormat;
+
+  document.getElementById("modalEdit").style.display = "flex";
+};
+  
+  window.closeModal = function(){
+  document.getElementById("modalEdit").style.display = "none";
+  editKey = null;
+
+  // Reset field
+  document.getElementById("editTanggal").value = "";
+  document.getElementById("editJumlah").value = "";
+  document.getElementById("editKet").value = "";
+};
+
+window.updateKas = async function(){
+
+  if(!editKey) return;
+
+  const sumberKas = document.getElementById("editSumber").value;
+  const tipe = document.getElementById("editTipe").value;
+  const jumlah = Number(document.getElementById("editJumlah").value);
+  const ket = document.getElementById("editKet").value;
+  const tanggalInput = document.getElementById("editTanggal").value;
+
+  if(!tanggalInput){
+    alert("Tanggal wajib diisi");
+    return;
+  }
+
+  if(!jumlah || jumlah<=0){
+    alert("Jumlah tidak valid");
+    return;
+  }
+
+  const tanggal = new Date(tanggalInput).getTime();
+  const kasItemRef = ref(db, "koperasi/kas/" + editKey);
+
+  await update(kasItemRef,{
+    sumberKas,
+    tipe,
+    jumlah,
+    keterangan: ket || "-",
+    tanggal
+  });
+
+  alert("Data berhasil diupdate");
+
+  closeModal();
+};
+  
+  window.hapusKas = async function(){
+
+  if(!editKey) return;
+
+  const konfirmasi = confirm("Yakin ingin menghapus data ini?");
+  if(!konfirmasi) return;
+
+  const kasItemRef = ref(db, "koperasi/kas/" + editKey);
+
+  await remove(kasItemRef);
+
+  alert("Data berhasil dihapus");
+
+  closeModal();
+};
+  
   // ===== EXPORT PDF KAS =====
 // ===== EXPORT PDF KAS (Masuk & Keluar Terpisah) =====
 window.exportPDF = async function(){
@@ -296,54 +455,55 @@ window.exportPDF = async function(){
   doc.text(`Tanggal Cetak : ${tanggalCetak}`,190,18,{align:"right"});
 
   // Ambil data terbaru
-  const snapshot = await new Promise(resolve=>{
-    onValue(kasRef, snap=>resolve(snap), {onlyOnce:true});
-  });
+  
+const snapshot = await get(kasRef);
+const rows = [];
 
-  const rows = [];
+let masukCash=0, keluarCash=0;
+let masukBank=0, keluarBank=0;
 
-  let masukCash=0, keluarCash=0;
-  let masukBank=0, keluarBank=0;
+if(!snapshot.exists()){
+  alert("Data kosong");
+  return;
+}
 
-  if(snapshot.exists()){
-    const data = Object.values(snapshot.val());
+const data = Object.values(snapshot.val());
 
-    // SORT TANGGAL
-    data.sort((a,b)=>{
-      return (Number(a.tanggal)||0) - (Number(b.tanggal)||0);
-    });
+// SORT TANGGAL
+data.sort((a,b)=>{
+  return (Number(a.tanggal)||0) - (Number(b.tanggal)||0);
+});
 
-    data.forEach(i=>{
-      const jumlah = Number(i?.jumlah)||0;
-      const tipe = i?.tipe||"masuk";
-      const sumberKas = i?.sumberKas||"cash";
+data.forEach(i=>{
+  const jumlah = Number(i?.jumlah)||0;
+  const tipe = i?.tipe||"masuk";
+  const sumberKas = i?.sumberKas||"cash";
 
-      const tglObj = new Date(Number(i.tanggal)||i.tanggal);
-      const tanggalStr = !isNaN(tglObj) ? 
-        tglObj.toLocaleDateString("id-ID") : "-";
+  const tglObj = new Date(Number(i.tanggal)||i.tanggal);
+  const tanggalStr = !isNaN(tglObj) ? 
+    tglObj.toLocaleDateString("id-ID") : "-";
 
-      let masuk = "";
-      let keluar = "";
+  let masuk = "";
+  let keluar = "";
 
-      if(tipe==="masuk"){
-        masuk = "Rp " + formatRp(jumlah);
-        if(sumberKas==="cash") masukCash+=jumlah;
-        else masukBank+=jumlah;
-      }else{
-        keluar = "Rp " + formatRp(jumlah);
-        if(sumberKas==="cash") keluarCash+=jumlah;
-        else keluarBank+=jumlah;
-      }
-
-      rows.push([
-        tanggalStr,
-        i?.keterangan || "-",
-        masuk,
-        keluar,
-        sumberKas.toUpperCase()
-      ]);
-    });
+  if(tipe==="masuk"){
+    masuk = "Rp " + formatRp(jumlah);
+    if(sumberKas==="cash") masukCash+=jumlah;
+    else masukBank+=jumlah;
+  }else{
+    keluar = "Rp " + formatRp(jumlah);
+    if(sumberKas==="cash") keluarCash+=jumlah;
+    else keluarBank+=jumlah;
   }
+
+  rows.push([
+    tanggalStr,
+    i?.keterangan || "-",
+    masuk,
+    keluar,
+    sumberKas.toUpperCase()
+  ]);
+});
 
   doc.autoTable({
     head:[["Tanggal","Keterangan","Kas Masuk","Kas Keluar","Sumber"]],
@@ -379,6 +539,58 @@ window.exportPDF = async function(){
   doc.save(`Laporan_Kas_${tanggalCetak.replace(/\//g,"-")}.pdf`);
 };
 </script>
+  
+<!-- MODAL EDIT -->
+<div id="modalEdit" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+">
 
+  <div style="
+    background:white;
+    width:90%;
+    max-width:400px;
+    padding:20px;
+    border-radius:12px;
+  ">
+
+    <h3>Edit Transaksi</h3>
+
+    <select id="editSumber">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+
+    <select id="editTipe">
+      <option value="masuk">Kas Masuk</option>
+      <option value="keluar">Kas Keluar</option>
+    </select>
+
+    <input type="date" id="editTanggal">
+    <input type="number" id="editJumlah" placeholder="Jumlah">
+    <input type="text" id="editKet" placeholder="Keterangan">
+
+    <div style="display:flex; gap:10px; margin-top:10px;">
+
+  <button onclick="updateKas()">
+    Update
+  </button>
+
+  <button onclick="hapusKas()" style="background:#e74c3c;color:white;">
+    Hapus
+  </button>
+
+  <button onclick="closeModal()" style="background:gray;">
+    Batal
+  </button>
+ </div>
+</div>
 </body>
 </html>
+  
+  

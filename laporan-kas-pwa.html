@@ -6,20 +6,52 @@
 <title>Laporan Kas</title>
 
 <style>
-body{font-family:Arial;margin:0;padding:20px;background:#f4f6f9;font-size:13px;}
-header{
-  background:linear-gradient(to right,#1e90ff,#0f3057);
+  header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
   color:white;
   padding:14px 20px;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
-.card{text-align:center;margin-bottom:15px;}
-.filter{text-align:center;margin-bottom:10px;}
-.filter input{padding:5px;margin:0 5px;}
-.filter button{padding:6px 10px;}
-.summary div{font-weight:bold;margin:3px 0;}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+  .brand-text .subtitle{
+  font-size:12px;
+  opacity:0.9;
+}
+
+.brand-text .title{
+  font-size:16px;
+  font-weight:bold;
+}
+.filter{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:15px;
+}
+
+.filter label{
+  font-weight:bold;
+}
+  
+  .summary div{font-weight:bold;margin:3px 0;}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:12px;}
 th{background:#f1f1f1;}
@@ -31,15 +63,28 @@ button{padding:6px 10px;border:none;border-radius:6px;background:#1e90ff;color:w
 <body>
 
 <header>
-  <div><b>KOPERASI DRIVER KHALIFA</b></div>
-  <div>💰 Laporan Kas</div>
-  <button onclick="window.location='dashboard.html'">Kembali</button>
-</header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+     <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+     </div>
+    
+       <button onclick="window.location='dashboard.html'">Kembali</button>
+   <button onclick="exportPDF()">Export PDF</button>
+  </div>
+  </header>
 
-<div class="card">
-  <div class="filter">
-    Dari: <input type="date" id="tglAwal">
-    Sampai: <input type="date" id="tglAkhir">
+
+  <p></p>
+  <div class="card">
+<div class="filter">
+    <label>Dari</label>
+    <input type="date" id="tglAwal">
+
+    <label>Sampai</label>
+    <input type="date" id="tglAkhir">
+
     <button onclick="filterTanggal()">Filter</button>
     <button onclick="resetFilter()">Reset</button>
   </div>
@@ -51,6 +96,7 @@ button{padding:6px 10px;border:none;border-radius:6px;background:#1e90ff;color:w
   </div>
 
   <button onclick="window.print()">🖨️ Print</button>
+
 </div>
 
 <table>
@@ -82,7 +128,6 @@ const firebaseConfig = {
   appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const kasRef = ref(db,"koperasi/kas");
@@ -104,28 +149,32 @@ onValue(kasRef,(snap)=>{
     for(const k in data){
       const item=data[k];
 
-      if(!item.jumlah || !item.tipe) continue;
+      if(item.jumlah == null || !item.tipe) continue;
 
       let tanggal;
 
-      // SUPPORT TIMESTAMP & STRING LAMA
-      if(typeof item.tanggal==="number"){
-        tanggal=new Date(item.tanggal);
-      }else if(typeof item.tanggal==="string"){
-        const t=item.tanggal.replace(",","").replace(/\./g,":");
-        tanggal=new Date(t);
+      // SUPPORT TIMESTAMP NUMBER
+      if(!isNaN(Number(item.tanggal))){
+        tanggal = new Date(Number(item.tanggal));
+      }
+      // SUPPORT STRING LAMA
+      else if(typeof item.tanggal === "string"){
+        tanggal = new Date(item.tanggal);
+      }
+      else{
+        continue;
       }
 
-      if(!tanggal || isNaN(tanggal)) continue;
+      if(isNaN(tanggal)) continue;
 
-      const jumlah=Number(item.jumlah||0);
+      const jumlah = Number(item.jumlah) || 0;
 
       laporanData.push({
         tanggal,
         keterangan:item.keterangan ?? "-",
         sumber:item.sumberKas ?? "-",
-        masuk:item.tipe==="masuk"?jumlah:0,
-        keluar:item.tipe==="keluar"?jumlah:0
+        masuk:item.tipe==="masuk" ? jumlah : 0,
+        keluar:item.tipe==="keluar" ? jumlah : 0
       });
     }
   }
@@ -135,25 +184,6 @@ onValue(kasRef,(snap)=>{
 });
 
 
-/* FILTER */
-function filterTanggal(){
-  const awal=document.getElementById("tglAwal").value;
-  const akhir=document.getElementById("tglAkhir").value;
-
-  if(!awal || !akhir){
-    alert("Pilih tanggal awal & akhir");
-    return;
-  }
-
-  const tAwal=new Date(awal+"T00:00:00");
-  const tAkhir=new Date(akhir+"T23:59:59");
-
-  const filtered=laporanData.filter(i=>{
-    return i.tanggal>=tAwal && i.tanggal<=tAkhir;
-  });
-
-  tampilkanLaporan(filtered);
-}
 function tampilkanLaporan(data){
 
   const tbody=document.getElementById("laporanKas");
@@ -163,7 +193,6 @@ function tampilkanLaporan(data){
   let totalMasuk=0;
   let totalKeluar=0;
 
-  // URUTKAN DARI PALING LAMA KE BARU
   data.sort((a,b)=>a.tanggal - b.tanggal);
 
   data.forEach(i=>{
@@ -192,11 +221,38 @@ function tampilkanLaporan(data){
   document.getElementById("kasMasuk").innerText="Kas Masuk : Rp "+formatRp(totalMasuk);
   document.getElementById("kasKeluar").innerText="Kas Keluar : Rp "+formatRp(totalKeluar);
 }
-function resetFilter(){
+
+
+/* FILTER */
+window.filterTanggal=function(){
+
+  const awal=document.getElementById("tglAwal").value;
+  const akhir=document.getElementById("tglAkhir").value;
+
+  if(!awal || !akhir){
+    alert("Pilih tanggal awal & akhir");
+    return;
+  }
+
+  const tAwal=new Date(awal);
+  tAwal.setHours(0,0,0,0);
+
+  const tAkhir=new Date(akhir);
+  tAkhir.setHours(23,59,59,999);
+
+  const filtered=laporanData.filter(i=>{
+    return i.tanggal>=tAwal && i.tanggal<=tAkhir;
+  });
+
+  tampilkanLaporan(filtered);
+}
+
+window.resetFilter=function(){
   document.getElementById("tglAwal").value="";
   document.getElementById("tglAkhir").value="";
   tampilkanLaporan(laporanData);
 }
+
 </script>
 
 </body>
