@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Angsuran</title>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{
+  background: linear-gradient(to right,#1e90ff,#0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand img{width:42px;height:42px;border-radius:50%;}
+.brand-text .subtitle{font-size:12px;}
+.brand-text .title{font-size:16px;font-weight:bold;}
+
+button{
+  padding:6px 12px;
+  border:none;
+  border-radius:6px;
+  background:#1e90ff;
+  color:white;
+  cursor:pointer;
+}
+
+select{
+  padding:6px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.container{padding:15px;}
+.card{
+  background:white;
+  padding:12px;
+  margin-bottom:15px;
+  border-radius:10px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.05);
+  font-size:13px;
+}
+.status{
+  padding:3px 8px;
+  border-radius:5px;
+  font-size:11px;
+  color:white;
+}
+.total-summary{
+  padding:10px 15px;
+  font-weight:bold;
+  font-size:14px;
+}
+.filter-box{
+  padding:10px 15px;
+}
+  h4 {
+  text-align: center;
+}
+
+  
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+    </div>
+  </div>
+  <div>
+    <button onclick="window.location='dashboard.html'">Kembali</button>
+    <button onclick="exportPDF()">Export PDF</button>
+  </div>
+</header>
+
+<!-- FILTER -->
+  <h4>LAPORAN PINJAMAN ANGGOTA</h4>
+<div class="filter-box">
+  Filter Anggota :
+  <select id="filterAnggota" onchange="render()">
+    <option value="all">Semua Anggota</option>
+  </select>
+</div>
+
+<div class="total-summary">
+  Total Pinjaman: Rp <span id="totalPinjaman">0</span><br>
+  Total Angsuran: Rp <span id="totalAngsuran">0</span>
+</div>
+
+<div class="container" id="cardsContainer"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Firebase Config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee",
+  storageBucket: "arfa-c7dee.firebasestorage.app",
+  messagingSenderId: "468058520812",
+  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const pinjamanRef = ref(db,"koperasi/pinjaman");
+const angsuranRef = ref(db,"koperasi/angsuran");
+
+let dataPinjaman = {};
+let dataAngsuran = {};
+
+function formatRp(n){
+  return Number(n||0).toLocaleString("id-ID");
+}
+
+function loadFilter(){
+  const select = document.getElementById("filterAnggota");
+  select.innerHTML = `<option value="all">Semua Anggota</option>`;
+
+  let daftarNama = new Set();
+
+  for(const key in dataPinjaman){
+    daftarNama.add(dataPinjaman[key].nama);
+  }
+
+  daftarNama.forEach(nama=>{
+    select.innerHTML += `<option value="${nama}">${nama}</option>`;
+  });
+}
+  
+  window.render = function(){
+
+  const filter = document.getElementById("filterAnggota").value;
+  const container = document.getElementById("cardsContainer");
+  container.innerHTML="";
+
+  let kelompok = {};
+  let totalPinjaman = 0;
+  let totalAngsuran = 0;
+
+  // 🔹 Kelompokkan pinjaman berdasarkan nama
+  for(const key in dataPinjaman){
+    const pin = dataPinjaman[key];
+
+    if(!kelompok[pin.nama]) kelompok[pin.nama] = [];
+    kelompok[pin.nama].push({id:key, ...pin});
+  }
+
+  for(const nama in kelompok){
+
+    if(filter !== "all" && filter !== nama) continue;
+
+    let rows = "";
+    let totalPinAnggota = 0;
+    let totalAngsAnggota = 0;
+
+    kelompok[nama].forEach(pinjaman => {
+
+      let angsTotal = 0;
+
+      for(const a in dataAngsuran){
+        if(dataAngsuran[a].pinjamanId === pinjaman.id){
+          angsTotal += Number(dataAngsuran[a].jumlah||0);
+        }
+      }
+
+      const sisa = Number(pinjaman.jumlah||0) - angsTotal;
+      const status = sisa<=0 ? "LUNAS" : "BELUM";
+
+      totalPinAnggota += Number(pinjaman.jumlah||0);
+      totalAngsAnggota += angsTotal;
+
+      rows += `
+        <tr>
+          <td>Rp ${formatRp(pinjaman.jumlah)}</td>
+          <td>Rp ${formatRp(angsTotal)}</td>
+          <td>Rp ${formatRp(sisa)}</td>
+          <td>${status}</td>
+        </tr>`;
+    });
+
+    totalPinjaman += totalPinAnggota;
+    totalAngsuran += totalAngsAnggota;
+
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <h3>${nama}</h3>
+      <table border="1" width="100%" style="border-collapse:collapse;font-size:12px;">
+        <tr style="background:#1e90ff;color:white;">
+          <th>Total Pinjaman</th>
+          <th>Total Angsuran</th>
+          <th>Sisa</th>
+          <th>Status</th>
+        </tr>
+        ${rows}
+      </table>
+
+      <div style="margin-top:8px;font-weight:bold;">
+        Total Pinjaman Anggota: Rp ${formatRp(totalPinAnggota)} <br>
+        Total Angsuran Anggota: Rp ${formatRp(totalAngsAnggota)}
+      </div>
+    `;
+
+    container.appendChild(card);
+  }
+
+  document.getElementById("totalPinjaman").innerText=formatRp(totalPinjaman);
+  document.getElementById("totalAngsuran").innerText=formatRp(totalAngsuran);
+};
+  
+onValue(pinjamanRef,snap=>{
+  dataPinjaman=snap.exists()?snap.val():{};
+  loadFilter();
+  render();
+});
+onValue(angsuranRef,snap=>{
+  dataAngsuran=snap.exists()?snap.val():{};
+  render();
+});
+window.exportPDF = function(){
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const filter = document.getElementById("filterAnggota").value;
+  const tanggalCetak = new Date().toLocaleDateString("id-ID");
+
+  let kelompok = {};
+
+  // 🔹 Kelompokkan pinjaman berdasarkan nama
+  for(const key in dataPinjaman){
+    const pin = dataPinjaman[key];
+
+    if(!kelompok[pin.nama]) kelompok[pin.nama] = [];
+    kelompok[pin.nama].push({id:key, ...pin});
+  }
+
+  let first = true;
+
+  for(const nama in kelompok){
+
+    if(filter !== "all" && filter !== nama) continue;
+
+    if(!first) doc.addPage();
+    first = false;
+
+    let totalPinAnggota = 0;
+    let totalAngsAnggota = 0;
+    let rows = [];
+
+    kelompok[nama].forEach(pinjaman => {
+
+      let angsTotal = 0;
+
+      for(const a in dataAngsuran){
+        if(dataAngsuran[a].pinjamanId === pinjaman.id){
+          angsTotal += Number(dataAngsuran[a].jumlah||0);
+        }
+      }
+
+      const sisa = Number(pinjaman.jumlah||0) - angsTotal;
+      const status = sisa<=0 ? "LUNAS" : "BELUM";
+
+      totalPinAnggota += Number(pinjaman.jumlah||0);
+      totalAngsAnggota += angsTotal;
+
+      rows.push([
+        "Rp " + formatRp(pinjaman.jumlah),
+        "Rp " + formatRp(angsTotal),
+        "Rp " + formatRp(sisa),
+        status
+      ]);
+    });
+
+    // ===== HEADER =====
+    doc.setFontSize(14);
+    doc.text("KOPERASI ARFA DRIVER",105,15,{align:"center"});
+    doc.setFontSize(11);
+    doc.text("LAPORAN PINJAMAN PER ANGGOTA",105,22,{align:"center"});
+    doc.setFontSize(9);
+    doc.text("Tanggal Cetak : "+tanggalCetak,190,15,{align:"right"});
+
+    // ===== INFO ANGGOTA =====
+    doc.setFontSize(11);
+    doc.text("Nama Anggota : " + nama,15,35);
+    doc.text("Total Semua Pinjaman : Rp " + formatRp(totalPinAnggota),15,42);
+    doc.text("Total Semua Angsuran : Rp " + formatRp(totalAngsAnggota),15,49);
+
+    // ===== TABEL =====
+    doc.autoTable({
+      head:[["Total Pinjaman","Total Angsuran","Sisa","Status"]],
+      body:rows,
+      startY:60,
+      styles:{fontSize:9},
+      headStyles:{fillColor:[30,144,255]}
+    });
+  }
+
+  doc.save("Laporan_Anggota_"+tanggalCetak.replace(/\//g,"-")+".pdf");
+};
+
+</script>
+
+</body>
+</html>
