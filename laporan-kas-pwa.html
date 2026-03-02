@@ -50,6 +50,10 @@
 .filter label{
   font-weight:bold;
 }
+  .masuk{color:green;font-weight:bold;}
+.keluar{color:red;font-weight:bold;}
+.saldo{font-weight:bold;}
+
   
   .summary div{font-weight:bold;margin:3px 0;}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
@@ -183,45 +187,34 @@ onValue(kasRef,(snap)=>{
 
 });
 
-
-function tampilkanLaporan(data){
-
+  function tampilkanLaporan(data){
   const tbody=document.getElementById("laporanKas");
   tbody.innerHTML="";
-
   let saldo=0;
   let totalMasuk=0;
   let totalKeluar=0;
-
   data.sort((a,b)=>a.tanggal - b.tanggal);
-
   data.forEach(i=>{
-
     const masuk = Number(i.masuk)||0;
     const keluar = Number(i.keluar)||0;
-
     saldo += masuk - keluar;
     totalMasuk += masuk;
     totalKeluar += keluar;
-
     const tr=document.createElement("tr");
     tr.innerHTML=`
       <td>${i.tanggal.toLocaleDateString("id-ID")}</td>
       <td>${i.keterangan}</td>
-      <td>${masuk ? "Rp "+formatRp(masuk) : "-"}</td>
-      <td>${keluar ? "Rp "+formatRp(keluar) : "-"}</td>
-      <td>Rp ${formatRp(saldo)}</td>
+      <td class="masuk">${masuk ? "Rp "+formatRp(masuk) : "-"}</td>
+      <td class="keluar">${keluar ? "Rp "+formatRp(keluar) : "-"}</td>
+      <td class="saldo ${saldo >= 0 ? 'positive' : 'negative'}">Rp ${formatRp(saldo)}</td>
       <td>${(i.sumber||"-").toUpperCase()}</td>
     `;
-
     tbody.appendChild(tr);
   });
-
   document.getElementById("saldoKas").innerText="Saldo Kas : Rp "+formatRp(saldo);
   document.getElementById("kasMasuk").innerText="Kas Masuk : Rp "+formatRp(totalMasuk);
   document.getElementById("kasKeluar").innerText="Kas Keluar : Rp "+formatRp(totalKeluar);
 }
-
 
 /* FILTER */
 window.filterTanggal=function(){

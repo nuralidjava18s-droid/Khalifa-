@@ -131,7 +131,7 @@ button{
       <option value="keluar">Kas Keluar</option>
     </select>
  
-    <input type="date" id="tanggal">
+   <input type="datetime-local" id="tanggal">
     <input type="number" id="jumlah" placeholder="Jumlah">
     <input type="text" id="keterangan" placeholder="Keterangan">
 
@@ -166,6 +166,16 @@ const kasRef = ref(db,"koperasi/kas");
 
 /* 🔥 TAMBAHKAN INI */
 let editKey = null;
+  // Isi default tanggal & jam sekarang
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth()+1).padStart(2,"0");
+const day = String(now.getDate()).padStart(2,"0");
+const hours = String(now.getHours()).padStart(2,"0");
+const minutes = String(now.getMinutes()).padStart(2,"0");
+
+document.getElementById("tanggal").value =
+  `${year}-${month}-${day}T${hours}:${minutes}`;
 // ===== ROLE BASE =====
 const role = localStorage.getItem("role") || "user";
 
@@ -185,6 +195,7 @@ function formatRp(n){
   return Number(n||0).toLocaleString("id-ID");
 }
 
+/* SIMPAN MANUAL */
 /* SIMPAN MANUAL */
 document.getElementById("btnSimpan").addEventListener("click", async ()=>{
 
@@ -206,44 +217,46 @@ document.getElementById("btnSimpan").addEventListener("click", async ()=>{
 
   const tanggal = new Date(tanggalInput).getTime();
 
-  // 🔥 MODE UPDATE
-  if(editKey){
-    const kasItemRef = ref(db, "koperasi/kas/" + editKey);
+  try {
 
-    await update(kasItemRef,{
-      sumberKas,
-      tipe,
-      jumlah,
-      keterangan: ket || "-",
-      tanggal
-    });
+    if(editKey){
+      const kasItemRef = ref(db, "koperasi/kas/" + editKey);
 
-    editKey = null;
-    document.getElementById("btnSimpan").innerText = "Simpan";
-    alert("Data berhasil diupdate");
+      await update(kasItemRef,{
+        sumberKas,
+        tipe,
+        jumlah,
+        keterangan: ket || "-",
+        tanggal
+      });
+
+      editKey = null;
+      alert("Data berhasil diupdate");
+    } 
+    else {
+      await push(kasRef,{
+        sumberKas,
+        tipe,
+        jumlah,
+        keterangan: ket || "-",
+        tanggal
+      });
+
+      alert("Data berhasil ditambahkan");
+    }
+
+    // reset form
+    document.getElementById("jumlah").value="";
+    document.getElementById("keterangan").value="";
+    document.getElementById("tanggal").value="";
+
+  } catch(err){
+    console.error(err);
+    alert("Terjadi error saat menyimpan");
   }
 
-    
-  // 🔥 MODE TAMBAH BARU
-  else{
-    await push(kasRef,{
-      sumberKas,
-      tipe,
-      jumlah,
-      keterangan: ket || "-",
-      tanggal
-    });
-
-    alert("Data berhasil ditambahkan");
-  }
-
-  // Reset form
-  document.getElementById("jumlah").value="";
-  document.getElementById("keterangan").value="";
-  document.getElementById("tanggal").value="";
 });
-  
-  
+
 /* LOAD DATA */
 onValue(kasRef, snapshot => {
 
@@ -357,10 +370,15 @@ if(isAdmin()){
     // 🔥 kalau data lama tidak punya tanggal
     tglFinal = new Date(); // isi otomatis hari ini
   }
+const year = tglFinal.getFullYear();
+const month = String(tglFinal.getMonth()+1).padStart(2,"0");
+const day = String(tglFinal.getDate()).padStart(2,"0");
+const hours = String(tglFinal.getHours()).padStart(2,"0");
+const minutes = String(tglFinal.getMinutes()).padStart(2,"0");
 
-  const tglFormat = tglFinal.toISOString().split("T")[0];
-  document.getElementById("editTanggal").value = tglFormat;
-
+const tglFormat = `${year}-${month}-${day}T${hours}:${minutes}`;
+document.getElementById("editTanggal").value = tglFormat;
+   
   document.getElementById("modalEdit").style.display = "flex";
 };
   
@@ -571,7 +589,7 @@ data.forEach(i=>{
       <option value="keluar">Kas Keluar</option>
     </select>
 
-    <input type="date" id="editTanggal">
+    <input type="datetime-local" id="editTanggal">
     <input type="number" id="editJumlah" placeholder="Jumlah">
     <input type="text" id="editKet" placeholder="Keterangan">
 

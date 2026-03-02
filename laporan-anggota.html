@@ -234,6 +234,8 @@ onValue(angsuranRef,snap=>{
   dataAngsuran=snap.exists()?snap.val():{};
   render();
 });
+  
+  
 window.exportPDF = function(){
 
   const { jsPDF } = window.jspdf;
