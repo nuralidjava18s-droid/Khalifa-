@@ -309,6 +309,14 @@ jumlah:Number(document.getElementById("editJumlah").value)
 
 tutupModal();
 };
+  window.tutupModal = function(){
+  document.getElementById("modalForm").style.display = "none";
+};
+  document.getElementById("modalForm").addEventListener("click", function(e){
+  if(e.target === this){
+    this.style.display = "none";
+  }
+});
 window.hapusData=async function(){
 if(!isAdmin()) return alert("Akses ditolak");
 
