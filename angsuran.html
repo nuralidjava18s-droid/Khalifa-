@@ -4,7 +4,68 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Angsuran</title>
+
 <style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+
+header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.container{padding:10px;}
+
+.card{
+  background:white;
+  padding:12px;
+  margin-bottom:15px;
+  border-radius:10px;
+  font-size:13px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.05);
+}
+
+button{
+  padding:6px 10px;
+  margin-top:5px;
+  margin-right:5px;
+  cursor:pointer;
+  border:none;
+  border-radius:5px;
+  background:#1e90ff;
+  color:white;
+}
+
+input,select{
+  padding:6px;
+  margin-bottom:8px;
+  width:100%;
+}
+
+.status{
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:11px;
+  font-weight:bold;
+  color:white;
+}
+
+.detail-angsuran{
+  display:none;
+  margin-top:8px;
+  background:#f9f9f9;
+  padding:8px;
+  border-radius:6px;
+}
+
+.total-summary{
+  padding:10px;
+  font-size:14px;
+  font-weight:bold;
+}
   header{
   background: linear-gradient(to right, #1e90ff, #0f3057);
   color:white;
@@ -37,83 +98,54 @@
   font-size:16px;
   font-weight:bold;
 }
-body{font-family:Arial;margin:0;background:#f4f6f9;}
-.container{padding:10px;}
-.card{background:white;padding:10px;margin-bottom:15px;border-radius:10px;font-size:13px;box-shadow:0 3px 10px rgba(0,0,0,0.05);}
-button{padding:6px 10px;margin-top:5px;margin-right:5px;cursor:pointer;border:none;border-radius:5px;background:#1e90ff;color:white;}
-input,select{padding:6px;margin-bottom:8px;width:100%;}
-.total{font-weight:bold;font-size:15px;}
-
-.status{
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:11px;
-  font-weight:bold;
-  color:white;
-}
-  h3{text-align:center}
-.detail-angsuran{
-  display:none;
-  margin-top:8px;
-  background:#f9f9f9;
-  padding:8px;
-  border-radius:6px;
-}
-.total-summary{
-  margin-top:10px;
-  font-size:14px;
-}
 </style>
 
-<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
 </head>
-<body>
 
-  <header>
+<body>
+<header>
   <div class="brand">
     <img src="img/icon-192.png">
      <div class="brand-text">
       <div class="subtitle">Koperasi</div>
       <div class="title">ARFA DRIVER</div>
      </div>
-<button onclick="window.location='dashboard.html'">Kembali</button>
-    <button onclick="exportPDF()">Export PDF</button>
+    
+       <button onclick="window.location='dashboard.html'">Kembali</button>
+   <button onclick="exportPDF()">Export PDF</button>
   </div>
-</header>
-<!-- Total -->
-  <div class="total-summary">
-    Total Pinjaman Aktif: Rp <span id="totalPinjaman">0</span><br>
-    Total Angsuran Aktif: Rp <span id="totalAngsuran">0</span>
-  </div>
+  </header>
+  
+<div class="total-summary">
+  Total Pinjaman Aktif: Rp <span id="totalPinjaman">0</span><br>
+  Total Angsuran Aktif: Rp <span id="totalAngsuran">0</span>
 </div>
+
 <div class="container">
 
-  <!-- Form Tambah Angsuran -->
-  <div id="formAngsuran" class="card">
-    <h3>Tambah Angsuran</h3>
-    <select id="pinjamanSelect"></select>
-    <input type="number" id="jumlahAngsuran" placeholder="Jumlah Angsuran">
-    <select id="metodeBayar">
-      <option value="cash">Cash</option>
-      <option value="bank">Bank</option>
-    </select>
-    <button onclick="tambahAngsuran()">Simpan</button>
-  </div>
+<div id="formAngsuran" class="card">
+  <h3>Tambah Angsuran</h3>
+  <select id="pinjamanSelect"></select>
+  <input type="number" id="jumlahAngsuran" placeholder="Jumlah Angsuran">
+  <select id="metodeBayar">
+    <option value="cash">Cash</option>
+    <option value="bank">Bank</option>
+  </select>
+  <button onclick="tambahAngsuran()">Simpan</button>
+</div>
 
-  <!-- Daftar Pinjaman -->
-  <div id="cardsContainer"></div>
+<div id="cardsContainer"></div>
 
-  
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue } 
+import { getDatabase, ref, push, onValue, update }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* Firebase Config */
+/* Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
   authDomain: "arfa-c7dee.firebaseapp.com",
@@ -123,6 +155,7 @@ const firebaseConfig = {
   messagingSenderId: "468058520812",
   appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -143,207 +176,196 @@ let dataAngsuran = {};
 function loadDropdown(){
   if(role!=="admin") return;
   const select = document.getElementById("pinjamanSelect");
-  select.innerHTML = "";
+  select.innerHTML="";
+
   for(const k in dataPinjaman){
-    let pin = dataPinjaman[k];
-    let totalBayar = 0;
+    const pin = dataPinjaman[k];
+
+    let totalBayar=0;
     for(const a in dataAngsuran){
-      if(dataAngsuran[a].pinjamanId===k){
-        totalBayar += Number(dataAngsuran[a].jumlah||0);
-      }
+      if(dataAngsuran[a].pinjamanId===k)
+        totalBayar+=Number(dataAngsuran[a].jumlah||0);
     }
-    const sisa = Number(pin.jumlah||0) - totalBayar;
-    if(sisa <=0) continue;
-    select.innerHTML += `<option value="${k}">${pin.nama} - Sisa: Rp ${formatRp(sisa)}</option>`;
+
+    const sisa = pin.jumlah-totalBayar;
+
+    if(sisa>0){
+      select.innerHTML+=`
+        <option value="${k}">
+          ${pin.nama} - Sisa Rp ${formatRp(sisa)}
+        </option>`;
+    }
   }
-  if(select.innerHTML===""){select.innerHTML=`<option value="">Tidak ada pinjaman aktif</option>`;}
+
+  if(select.innerHTML===""){
+    select.innerHTML=`<option value="">Tidak ada pinjaman aktif</option>`;
+  }
 }
 
 function render(){
   const container=document.getElementById("cardsContainer");
   container.innerHTML="";
-  let totalPinjaman = 0;
-  let totalAngsuran = 0;
-  let adaData = false;
+
+  let totalPinjaman=0;
+  let totalAngsuran=0;
+  let ada=false;
 
   for(const key in dataPinjaman){
-    let pin = dataPinjaman[key];
-    let angsTotal = 0;
-    let detail = "";
+
+    const pin = dataPinjaman[key];
+
+    let angsTotal=0;
+    let detail="";
 
     for(const a in dataAngsuran){
       if(dataAngsuran[a].pinjamanId===key){
-        angsTotal += Number(dataAngsuran[a].jumlah||0);
-        detail += `
+        angsTotal+=Number(dataAngsuran[a].jumlah||0);
+
+        detail+=`
         <div style="border-top:1px solid #ddd;margin-top:5px;padding-top:5px;">
-          Tanggal: ${dataAngsuran[a].tanggal||"-"}<br>
-          Jumlah: Rp ${formatRp(dataAngsuran[a].jumlah)} - ${dataAngsuran[a].metode||"-"}
+          ${dataAngsuran[a].tanggal}<br>
+          Rp ${formatRp(dataAngsuran[a].jumlah)} - ${dataAngsuran[a].metode}
         </div>`;
       }
     }
 
-    const sisa = Number(pin.jumlah||0) - angsTotal;
-    const statusClass = sisa<=0 ? "background:#2ecc71" : "background:#e74c3c"; 
-    const statusText = sisa<=0 ? "LUNAS" : "BELUM";
+    const sisa = pin.jumlah-angsTotal;
 
-    if(sisa>0){
-      totalPinjaman += Number(pin.jumlah||0);
-      totalAngsuran += angsTotal;
-      adaData = true;
-    }
+    if(sisa<=0) continue; // 🔥 hanya tampil aktif
 
-    const card = document.createElement("div");
+    totalPinjaman+=Number(pin.jumlah);
+    totalAngsuran+=angsTotal;
+    ada=true;
+
+    const card=document.createElement("div");
     card.className="card";
-    card.innerHTML = `
+    card.innerHTML=`
       <h3 onclick="toggleDetail('${key}')">
         ${pin.nama}
-        <span class="status" style="${statusClass}">${statusText}</span>
+        <span class="status" style="background:#e74c3c">AKTIF</span>
       </h3>
-      Jumlah Pinjaman: Rp ${formatRp(pin.jumlah)}<br>
-      Total Angsuran: Rp ${formatRp(angsTotal)}<br>
+      Total Pinjaman: Rp ${formatRp(pin.jumlah)}<br>
+      Total Bayar: Rp ${formatRp(angsTotal)}<br>
       Sisa: Rp ${formatRp(sisa)}
-      <div id="detail-${key}" class="detail-angsuran">${detail || "Belum ada angsuran"}</div>`;
+      <div id="detail-${key}" class="detail-angsuran">
+        ${detail || "Belum ada angsuran"}
+      </div>
+    `;
+
     container.appendChild(card);
   }
 
-  if(!adaData){
-    container.innerHTML = `<div class="card" style="text-align:center;">Tidak ada pinjaman aktif</div>`;
+  if(!ada){
+    container.innerHTML=`<div class="card">Tidak ada pinjaman aktif</div>`;
   }
 
-  document.getElementById("totalPinjaman").innerText = formatRp(totalPinjaman);
-  document.getElementById("totalAngsuran").innerText = formatRp(totalAngsuran);
+  document.getElementById("totalPinjaman").innerText=formatRp(totalPinjaman);
+  document.getElementById("totalAngsuran").innerText=formatRp(totalAngsuran);
 }
 
-// 🔹 Data realtime
-onValue(pinjamanRef,(snap)=>{dataPinjaman=snap.exists()?snap.val():{};loadDropdown();render();});
-onValue(angsuranRef,(snap)=>{dataAngsuran=snap.exists()?snap.val():{};loadDropdown();render();});
+onValue(pinjamanRef,snap=>{
+  dataPinjaman=snap.exists()?snap.val():{};
+  loadDropdown();
+  render();
+});
 
-// 🔹 Tambah angsuran
+onValue(angsuranRef,snap=>{
+  dataAngsuran=snap.exists()?snap.val():{};
+  loadDropdown();
+  render();
+});
+
 window.tambahAngsuran=async function(){
-  if(role!=="admin"){alert("Tidak punya akses");return;}
-  const id = document.getElementById("pinjamanSelect").value;
-  const jumlah = Number(document.getElementById("jumlahAngsuran").value);
-  const metode = document.getElementById("metodeBayar").value;
 
-  if(!id || !jumlah || jumlah<=0){alert("Data tidak valid"); return;}
+  if(role!=="admin"){alert("Tidak punya akses");return;}
+
+  const id=document.getElementById("pinjamanSelect").value;
+  const jumlah=Number(document.getElementById("jumlahAngsuran").value);
+  const metode=document.getElementById("metodeBayar").value;
+
+  if(!id||jumlah<=0){alert("Data tidak valid");return;}
 
   let totalBayar=0;
-  for(const a in dataAngsuran){if(dataAngsuran[a].pinjamanId===id) totalBayar += Number(dataAngsuran[a].jumlah||0);}
-  const totalPinjam=Number(dataPinjaman[id].jumlah||0);
+  for(const a in dataAngsuran){
+    if(dataAngsuran[a].pinjamanId===id)
+      totalBayar+=Number(dataAngsuran[a].jumlah||0);
+  }
+
+  const totalPinjam=dataPinjaman[id].jumlah;
   const sisa=totalPinjam-totalBayar;
 
-  if(sisa<=0){alert("Pinjaman sudah LUNAS"); return;}
-  if(jumlah>sisa){alert("Angsuran melebihi sisa pinjaman!"); return;}
+  if(jumlah>sisa){alert("Melebihi sisa!");return;}
 
   const waktu=new Date().toLocaleString();
 
-  const newRef = await push(angsuranRef,{
+  await push(angsuranRef,{
     pinjamanId:id,
     nama:dataPinjaman[id].nama,
-    jumlah:jumlah,
-    metode:metode,
+    jumlah,
+    metode,
     tanggal:waktu
   });
 
   await push(kasRef,{
     jenis:"masuk",
-    metode:metode,
-    jumlah:jumlah,
+    metode,
+    jumlah,
     tanggal:waktu,
-    keterangan:`Angsuran - ${dataPinjaman[id].nama}`,
-    angsuranId:newRef.key
+    keterangan:"Angsuran - "+dataPinjaman[id].nama
   });
+
+  // 🔥 Update status jika lunas
+  if(jumlah===sisa){
+    await update(ref(db,"koperasi/pinjaman/"+id),{
+      status:"lunas"
+    });
+  }
 
   document.getElementById("jumlahAngsuran").value="";
   alert("Berhasil disimpan");
 };
 
-// 🔹 Toggle detail
 window.toggleDetail=function(id){
   const el=document.getElementById("detail-"+id);
   el.style.display = el.style.display==="block"?"none":"block";
 };
 
-// 🔹 Export PDF
-window.exportPDF = async function(){
-
+window.exportPDF=function(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // ===== LOAD LOGO =====
-  const img = new Image();
-  img.src = "img/icon-192.png"; // pastikan path benar
+  doc.text("LAPORAN ANGSURAN AKTIF",105,15,{align:"center"});
 
-  await new Promise(resolve=>{
-    img.onload = resolve;
-  });
-
-  // Tambahkan logo
-  doc.addImage(img, "PNG", 15, 10, 22, 22);
-
-  // ===== HEADER =====
-  doc.setFontSize(16);
-  doc.text("KOPERASI ARFA DRIVER",105,18,{align:"center"});
-
-  doc.setFontSize(13);
-  doc.text("LAPORAN ANGSURAN PINJAMAN",105,25,{align:"center"});
-
-  const tanggalCetak = new Date().toLocaleDateString("id-ID");
-
-  doc.setFontSize(10);
-  doc.text(`Tanggal Cetak : ${tanggalCetak}`,190,18,{align:"right"});
-
-  // ===== DATA TABEL =====
   const rows=[];
 
   for(const k in dataPinjaman){
-    const pin = dataPinjaman[k];
-    let angsTotal = 0;
+    const pin=dataPinjaman[k];
+    let angsTotal=0;
 
     for(const a in dataAngsuran){
-      if(dataAngsuran[a].pinjamanId===k){
-
-        angsTotal += Number(dataAngsuran[a].jumlah||0);
-        const sisa = pin.jumlah - angsTotal;
-        const status = sisa <= 0 ? "LUNAS" : "BELUM";
-
-        rows.push([
-          pin.nama,
-          `Rp ${formatRp(pin.jumlah)}`,
-          status,
-          `Rp ${formatRp(sisa)}`,
-          dataAngsuran[a].tanggal||"-",
-          dataAngsuran[a].metode||"-",
-          `Rp ${formatRp(dataAngsuran[a].jumlah)}`
-        ]);
-      }
+      if(dataAngsuran[a].pinjamanId===k)
+        angsTotal+=Number(dataAngsuran[a].jumlah||0);
     }
 
-    // Jika belum ada angsuran
-    if(angsTotal===0){
+    const sisa=pin.jumlah-angsTotal;
+
+    if(sisa>0){
       rows.push([
         pin.nama,
-        `Rp ${formatRp(pin.jumlah)}`,
-        "BELUM",
-        `Rp ${formatRp(pin.jumlah)}`,
-        "-",
-        "-",
-        "-"
+        formatRp(pin.jumlah),
+        formatRp(angsTotal),
+        formatRp(sisa)
       ]);
     }
   }
 
   doc.autoTable({
-    head:[["Nama","Total Pinjaman","Status","Sisa","Tanggal Angsuran","Metode","Jumlah Angsuran"]],
+    head:[["Nama","Pinjaman","Total Bayar","Sisa"]],
     body:rows,
-    startY:40,
-    styles:{fontSize:8},
-    headStyles:{fillColor:[30,144,255]}
+    startY:25
   });
 
-  doc.save(
-    `Laporan_Angsuran_${tanggalCetak.replace(/\//g,"-")}.pdf`
-  );
+  doc.save("Laporan_Angsuran_Aktif.pdf");
 };
 </script>
 
