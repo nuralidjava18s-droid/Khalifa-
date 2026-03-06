@@ -10,76 +10,68 @@ body{font-family:Arial;margin:0;background:#f4f6f9;}
 .container{padding:10px;}
 
 .card{
-  background:white;
-  padding:12px;
-  margin-bottom:15px;
-  border-radius:10px;
-  font-size:13px;
-  box-shadow:0 3px 10px rgba(0,0,0,0.05);
+background:white;
+padding:12px;
+margin-bottom:15px;
+border-radius:10px;
+font-size:13px;
+box-shadow:0 3px 10px rgba(0,0,0,0.05);
 }
 
 input,select{
-  padding:6px;
-  margin-bottom:8px;
-  width:100%;
+padding:6px;
+margin-bottom:8px;
+width:100%;
 }
 
 button{
-  padding:6px 10px;
-  margin-top:5px;
-  cursor:pointer;
-  border:none;
-  border-radius:5px;
-  background:#1e90ff;
-  color:white;
+padding:6px 10px;
+margin-top:5px;
+cursor:pointer;
+border:none;
+border-radius:5px;
+background:#1e90ff;
+color:white;
 }
 
-.btn-danger{ background:#e74c3c; }
+.btn-danger{background:#e74c3c;}
 
 .total-summary{
-  margin-top:10px;
-  font-weight:bold;
+margin-top:10px;
+font-weight:bold;
 }
 
 header{
-  background: linear-gradient(to right, #1e90ff, #0f3057);
-  color:white;
-  padding:14px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-  header{
-  background: linear-gradient(to right, #1e90ff, #0f3057);
-  color:white;
-  padding:14px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+background: linear-gradient(to right,#1e90ff,#0f3057);
+color:white;
+padding:14px 20px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 3px 10px rgba(0,0,0,0.2);
 }
 
 .brand{
-  display:flex;
-  align-items:center;
-  gap:10px;
+display:flex;
+align-items:center;
+gap:10px;
 }
 
 .brand img{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  object-fit:cover;
+width:42px;
+height:42px;
+border-radius:50%;
+object-fit:cover;
 }
 
-  .brand-text .subtitle{
-  font-size:12px;
-  opacity:0.9;
+.brand-text .subtitle{
+font-size:12px;
+opacity:0.9;
 }
 
 .brand-text .title{
-  font-size:16px;
-  font-weight:bold;
+font-size:16px;
+font-weight:bold;
 }
 </style>
 
@@ -90,44 +82,47 @@ header{
 <body>
 
 <header>
-  <div class="brand">
-    <img src="img/icon-192.png">
-     <div class="brand-text">
-      <div class="subtitle">Koperasi</div>
-      <div class="title">ARFA DRIVER</div>
-     </div>
-    
-       <button onclick="window.location='dashboard.html'">Kembali</button>
-   <button onclick="exportPDF()">Export PDF</button>
-  </div>
-  </header>
+<div class="brand">
+<img src="img/icon-192.png">
+
+<div class="brand-text">
+<div class="subtitle">Koperasi</div>
+<div class="title">ARFA DRIVER</div>
+</div>
+
+<button onclick="window.location='dashboard.html'">Kembali</button>
+<button onclick="exportPDF()">Export PDF</button>
+
+</div>
+</header>
 
 <div class="container">
 
 <div class="total-summary">
-  Total Pinjaman: Rp <span id="totalPinjaman">0</span>
+Total Pinjaman : Rp <span id="totalPinjaman">0</span>
 </div>
 
 <div id="formPinjaman" class="card">
-  <h3 id="formTitle">Tambah Pinjaman</h3>
-  <input type="hidden" id="editId">
+<h3 id="formTitle">Tambah Pinjaman</h3>
 
-  <!-- 🔽 DROPDOWN ANGGOTA -->
-  <select id="anggotaSelect">
-    <option value="">Pilih Anggota</option>
-  </select>
+<input type="hidden" id="editId">
 
-  <input type="number" id="jumlahPinjaman" placeholder="Jumlah Pinjaman">
+<select id="anggotaSelect">
+<option value="">Pilih Anggota</option>
+</select>
 
-  <select id="metodePinjaman">
-    <option value="cash">Cash</option>
-    <option value="bank">Bank</option>
-  </select>
+<input type="number" id="jumlahPinjaman" placeholder="Jumlah Pinjaman">
 
-  <input type="text" id="keteranganPinjaman" placeholder="Keterangan">
+<select id="metodePinjaman">
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+</select>
 
-  <button onclick="simpanPinjaman()">Simpan</button>
-  <button onclick="resetForm()" style="background:#777;">Batal</button>
+<input type="text" id="keteranganPinjaman" placeholder="Keterangan">
+
+<button onclick="simpanPinjaman()">Simpan</button>
+<button onclick="resetForm()" style="background:#777;">Batal</button>
+
 </div>
 
 <div id="cardsContainer"></div>
@@ -135,20 +130,40 @@ header{
 </div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, update, remove }
+
+import {
+getDatabase,
+ref,
+push,
+onValue,
+update,
+remove
+}
+
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
-  authDomain: "arfa-c7dee.firebaseapp.com",
-  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
-  projectId: "arfa-c7dee",
-  storageBucket: "arfa-c7dee.firebasestorage.app",
-  messagingSenderId: "468058520812",
-  appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+
+apiKey:"AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+
+authDomain:"arfa-c7dee.firebaseapp.com",
+
+databaseURL:"https://arfa-c7dee-default-rtdb.firebaseio.com",
+
+projectId:"arfa-c7dee",
+
+storageBucket:"arfa-c7dee.firebasestorage.app",
+
+messagingSenderId:"468058520812",
+
+appId:"1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+
 };
-  
+
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -156,171 +171,276 @@ const pinjamanRef = ref(db,"koperasi/pinjaman");
 const kasRef = ref(db,"koperasi/kas");
 const anggotaRef = ref(db,"koperasi/anggota");
 
+
 const role = localStorage.getItem("role") || "user";
+
 if(role!=="admin"){
-  document.getElementById("formPinjaman").style.display="none";
+document.getElementById("formPinjaman").style.display="none";
 }
 
-function formatRp(n){return Number(n||0).toLocaleString("id-ID");}
+
+function formatRp(n){
+return Number(n||0).toLocaleString("id-ID");
+}
+
 
 let dataPinjaman={};
 let dataAnggota={};
 
-/* 🔹 Load Dropdown Anggota */
+
 onValue(anggotaRef,(snap)=>{
-  dataAnggota = snap.exists()?snap.val():{};
-  const select=document.getElementById("anggotaSelect");
-  select.innerHTML=`<option value="">Pilih Anggota</option>`;
-  for(const k in dataAnggota){
-    select.innerHTML+=`<option value="${k}">${dataAnggota[k].nama}</option>`;
-  }
-});
 
-/* 🔹 Render Pinjaman */
-function render(){
-  const container=document.getElementById("cardsContainer");
-  container.innerHTML="";
-  let total=0;
+dataAnggota = snap.exists()?snap.val():{};
 
-  for(const k in dataPinjaman){
-    const p=dataPinjaman[k];
-    total+=Number(p.jumlah||0);
+const select=document.getElementById("anggotaSelect");
 
-    const card=document.createElement("div");
-    card.className="card";
-    card.innerHTML=`
-      <h3>${p.nama}</h3>
-      Tanggal: ${p.tanggal}<br>
-      Jumlah: Rp ${formatRp(p.jumlah)}<br>
-      Metode: ${p.metode}<br>
-      Keterangan: ${p.keterangan||"-"}
-      ${role==="admin"?`
-      <br><br>
-      <button onclick="editPinjaman('${k}')">Edit</button>
-      <button class="btn-danger" onclick="hapusPinjaman('${k}')">Hapus</button>
-      `:""}
-    `;
-    container.appendChild(card);
-  }
+select.innerHTML=`<option value="">Pilih Anggota</option>`;
 
-  document.getElementById("totalPinjaman").innerText=formatRp(total);
+for(const k in dataAnggota){
+
+select.innerHTML+=`<option value="${k}">
+${dataAnggota[k].nama}
+</option>`;
+
 }
 
-onValue(pinjamanRef,(snap)=>{
-  dataPinjaman=snap.exists()?snap.val():{};
-  render();
 });
 
-/* 🔹 Simpan */
-window.simpanPinjaman=async function(){
 
-  if(role!=="admin"){alert("Tidak punya akses");return;}
+function render(){
 
-  const id=document.getElementById("editId").value;
-  const anggotaId=document.getElementById("anggotaSelect").value;
-  const jumlah=Number(document.getElementById("jumlahPinjaman").value);
-  const metode=document.getElementById("metodePinjaman").value;
-  const ket=document.getElementById("keteranganPinjaman").value.trim();
+const container=document.getElementById("cardsContainer");
 
-  if(!anggotaId||jumlah<=0){
-    alert("Data tidak valid");
-    return;
-  }
+container.innerHTML="";
 
-  const nama=dataAnggota[anggotaId].nama;
-  const tanggal=new Date().toLocaleString();
+let total=0;
 
-  if(id){
-    await update(ref(db,"koperasi/pinjaman/"+id),{
-      nama,jumlah,metode,keterangan:ket
-    });
-    alert("Data berhasil diupdate");
-  }else{
-    await push(pinjamanRef,{
-      anggotaId,
-      nama,
-      jumlah,
-      metode,
-      keterangan:ket,
-      tanggal,
-      lunas:false
-    });
+for(const k in dataPinjaman){
 
-    await push(kasRef,{
-      tanggal,
-      keterangan:`Pinjaman - ${nama}`,
-      jenis:"masuk",
-      cash:metode==="cash"?jumlah:0,
-      bank:metode==="bank"?jumlah:0
-    });
+const p=dataPinjaman[k];
 
-    alert("Pinjaman berhasil ditambah");
-  }
+total+=Number(p.jumlah||0);
 
-  resetForm();
-};
+const card=document.createElement("div");
 
-/* 🔹 Edit */
+card.className="card";
+
+card.innerHTML=`
+
+<h3>${p.nama}</h3>
+
+Tanggal : ${p.tanggal}<br>
+
+Jumlah : Rp ${formatRp(p.jumlah)}<br>
+
+Metode : ${p.metode}<br>
+
+Keterangan : ${p.keterangan||"-"}
+
+${role==="admin"?`
+
+<br><br>
+
+<button type="button" onclick="editPinjaman('${k}')">
+Edit
+</button>
+
+<button type="button" class="btn-danger"
+onclick="hapusPinjaman('${k}')">
+Hapus
+</button>
+
+`:""}
+
+`;
+
+container.appendChild(card);
+
+}
+
+document.getElementById("totalPinjaman").innerText=formatRp(total);
+
+}
+
+
+onValue(pinjamanRef,(snap)=>{
+
+dataPinjaman = snap.exists()?snap.val():{};
+
+render();
+
+});
+
+
+window.simpanPinjaman = async function(){
+
+if(role!=="admin"){
+alert("Tidak punya akses");
+return;
+}
+
+const id=document.getElementById("editId").value;
+
+const anggotaId=document.getElementById("anggotaSelect").value;
+
+const jumlah=Number(document.getElementById("jumlahPinjaman").value);
+
+const metode=document.getElementById("metodePinjaman").value;
+
+const ket=document.getElementById("keteranganPinjaman").value.trim();
+
+
+if(!anggotaId || jumlah<=0){
+
+alert("Data tidak valid");
+
+return;
+
+}
+
+
+const nama=dataAnggota[anggotaId].nama;
+
+const tanggal=new Date().toLocaleString();
+
+
+if(id){
+
+await update(ref(db,"koperasi/pinjaman/"+id),{
+
+anggotaId,
+nama,
+jumlah,
+metode,
+keterangan:ket
+
+});
+
+alert("Data berhasil diupdate");
+
+}
+
+else{
+
+await push(pinjamanRef,{
+
+anggotaId,
+nama,
+jumlah,
+metode,
+keterangan:ket,
+tanggal,
+lunas:false
+
+});
+
+
+await push(kasRef,{
+
+tanggal,
+keterangan:`Pinjaman - ${nama}`,
+jenis:"keluar",
+cash:metode==="cash"?jumlah:0,
+bank:metode==="bank"?jumlah:0
+
+});
+
+alert("Pinjaman berhasil ditambah");
+
+}
+
+resetForm();
+
+}
+
+
 window.editPinjaman=function(id){
-  const p=dataPinjaman[id];
-  document.getElementById("editId").value=id;
-  document.getElementById("jumlahPinjaman").value=p.jumlah;
-  document.getElementById("metodePinjaman").value=p.metode;
-  document.getElementById("keteranganPinjaman").value=p.keterangan||"";
 
-  // set dropdown sesuai anggota
-  for(const k in dataAnggota){
-    if(dataAnggota[k].nama===p.nama){
-      document.getElementById("anggotaSelect").value=k;
-    }
-  }
+const p=dataPinjaman[id];
 
-  document.getElementById("formTitle").innerText="Edit Pinjaman";
-  window.scrollTo({top:0,behavior:"smooth"});
-};
+document.getElementById("editId").value=id;
 
-/* 🔹 Hapus */
+document.getElementById("anggotaSelect").value=p.anggotaId;
+
+document.getElementById("jumlahPinjaman").value=p.jumlah;
+
+document.getElementById("metodePinjaman").value=p.metode;
+
+document.getElementById("keteranganPinjaman").value=p.keterangan||"";
+
+document.getElementById("formTitle").innerText="Edit Pinjaman";
+
+window.scrollTo({top:0,behavior:"smooth"});
+
+}
+
+
 window.hapusPinjaman=async function(id){
-  if(!confirm("Yakin hapus pinjaman ini?"))return;
-  await remove(ref(db,"koperasi/pinjaman/"+id));
-  alert("Data berhasil dihapus");
-};
 
-/* 🔹 Reset */
+if(!confirm("Yakin hapus pinjaman ini?"))return;
+
+await remove(ref(db,"koperasi/pinjaman/"+id));
+
+alert("Data berhasil dihapus");
+
+}
+
+
 window.resetForm=function(){
-  document.getElementById("editId").value="";
-  document.getElementById("anggotaSelect").value="";
-  document.getElementById("jumlahPinjaman").value="";
-  document.getElementById("keteranganPinjaman").value="";
-  document.getElementById("formTitle").innerText="Tambah Pinjaman";
-};
 
-/* 🔹 Export PDF */
+document.getElementById("editId").value="";
+
+document.getElementById("anggotaSelect").value="";
+
+document.getElementById("jumlahPinjaman").value="";
+
+document.getElementById("metodePinjaman").value="cash";
+
+document.getElementById("keteranganPinjaman").value="";
+
+document.getElementById("formTitle").innerText="Tambah Pinjaman";
+
+}
+
+
 window.exportPDF=function(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("Laporan Pinjaman",105,15,{align:"center"});
 
-  const rows=[];
-  for(const k in dataPinjaman){
-    const p=dataPinjaman[k];
-    rows.push([
-      p.nama,
-      p.tanggal,
-      formatRp(p.jumlah),
-      p.metode,
-      p.keterangan||"-"
-    ]);
-  }
+const { jsPDF } = window.jspdf;
 
-  doc.autoTable({
-    head:[["Nama","Tanggal","Jumlah","Metode","Keterangan"]],
-    body:rows,
-    startY:25
-  });
+const doc = new jsPDF();
 
-  doc.save("Laporan_Pinjaman.pdf");
-};
+doc.text("Laporan Pinjaman",105,15,{align:"center"});
+
+const rows=[];
+
+for(const k in dataPinjaman){
+
+const p=dataPinjaman[k];
+
+rows.push([
+p.nama,
+p.tanggal,
+formatRp(p.jumlah),
+p.metode,
+p.keterangan||"-"
+]);
+
+}
+
+doc.autoTable({
+
+head:[["Nama","Tanggal","Jumlah","Metode","Keterangan"]],
+
+body:rows,
+
+startY:25
+
+});
+
+doc.save("Laporan_Pinjaman.pdf");
+
+}
+
 </script>
 
 </body>

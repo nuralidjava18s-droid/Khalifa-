@@ -234,13 +234,7 @@ document.getElementById("btnSimpan").addEventListener("click", async ()=>{
       alert("Data berhasil diupdate");
     } 
     else {
-      await push(kasRef,{
-        sumberKas,
-        tipe,
-        jumlah,
-        keterangan: ket || "-",
-        tanggal
-      });
+      
 
       alert("Data berhasil ditambahkan");
     }
