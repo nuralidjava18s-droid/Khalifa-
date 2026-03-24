@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buku Kas Koperasi</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:#1e90ff;color:white;padding:14px;font-weight:bold;text-align:center;}
+.container{padding:20px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,.08);}
+input,select{padding:8px;margin-bottom:10px;width:100%;}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:6px;text-align:left;}
+th{background:#f1f1f1;}
+.total{font-weight:bold;}
+button{padding:6px 12px;border:none;border-radius:4px;background:#1e90ff;color:white;cursor:pointer;margin-top:5px;}
+</style>
+</head>
+
+<body>
+
+  <header>
+  <div>Profil Anggota</div>
+  <button onclick="window.location='dashboard.html'">Kembali</button>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h3>Filter Periode</h3>
+<input type="month" id="filterBulan">
+<select id="sumberKas">
+<option value="all">Semua</option>
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+</select>
+<button onclick="renderBuku()">Tampilkan</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div class="card">
+<h3>Buku Kas</h3>
+<div id="bukuKasContainer"></div>
+</div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+authDomain:"arfa-c7dee.firebaseapp.com",
+databaseURL:"https://arfa-c7dee-default-rtdb.firebaseio.com",
+projectId:"arfa-c7dee"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+const kasRef=ref(db,"kas");
+
+function formatRp(n){return Number(n||0).toLocaleString("id-ID");}
+function parseTanggal(tgl){return tgl?Number(tgl):0;}
+
+window.renderBuku=async function(){
+
+const filterBulan=document.getElementById("filterBulan").value;
+const sumber=document.getElementById("sumberKas").value;
+
+const snap=await get(kasRef);
+const container=document.getElementById("bukuKasContainer");
+container.innerHTML="";
+
+if(!snap.exists()){ container.innerHTML="Data kosong"; return; }
+
+let data=Object.values(snap.val()).sort((a,b)=>parseTanggal(a.tanggal)-parseTanggal(b.tanggal));
+
+let saldoAwal=0;
+let saldoBerjalan=0;
+let totalMasuk=0;
+let totalKeluar=0;
+
+// Hitung saldo awal bulan
+data.forEach(i=>{
+const t=new Date(i.tanggal);
+const ym=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0");
+if(filterBulan && ym < filterBulan){
+if(i.tipe==="masuk") saldoAwal+=i.jumlah;
+if(i.tipe==="keluar") saldoAwal-=i.jumlah;
+}
+});
+
+// Filter data sesuai bulan & sumber
+data=data.filter(i=>{
+const t=new Date(i.tanggal);
+const ym=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0");
+if(filterBulan && ym !== filterBulan) return false;
+if(sumber!=="all" && i.sumberKas!==sumber) return false;
+return true;
+});
+
+saldoBerjalan=saldoAwal;
+
+// Render tabel
+let html=`<table>
+<tr>
+<th>Tanggal</th><th>Keterangan</th><th>Masuk</th><th>Keluar</th><th>Saldo</th><th>Sumber</th>
+</tr>`;
+
+html+=`<tr><td colspan="4"><b>Saldo Awal</b></td><td>${formatRp(saldoAwal)}</td><td>-</td></tr>`;
+
+data.forEach(i=>{
+let masuk="", keluar="";
+if(i.tipe==="masuk"){ masuk=formatRp(i.jumlah); saldoBerjalan+=i.jumlah; totalMasuk+=i.jumlah; }
+if(i.tipe==="keluar"){ keluar=formatRp(i.jumlah); saldoBerjalan-=i.jumlah; totalKeluar+=i.jumlah; }
+html+=`<tr>
+<td>${new Date(i.tanggal).toLocaleDateString("id-ID")}</td>
+<td>${i.keterangan||"-"}</td>
+<td>${masuk}</td>
+<td>${keluar}</td>
+<td>${formatRp(saldoBerjalan)}</td>
+<td>${i.sumberKas.toUpperCase()}</td>
+</tr>`;
+});
+
+html+=`<tr class="total">
+<td colspan="2">TOTAL</td>
+<td>${formatRp(totalMasuk)}</td>
+<td>${formatRp(totalKeluar)}</td>
+<td>${formatRp(saldoBerjalan)}</td>
+<td>-</td>
+</tr>`;
+
+html+="</table>";
+container.innerHTML=html;
+}
+
+window.exportPDF=async function(){
+const filterBulan=document.getElementById("filterBulan").value;
+const sumber=document.getElementById("sumberKas").value;
+if(!filterBulan){ alert("Pilih bulan dulu"); return; }
+
+const { jsPDF }=window.jspdf;
+const doc=new jsPDF();
+
+const snap=await get(kasRef);
+if(!snap.exists()){ alert("Data kosong"); return; }
+
+let data=Object.values(snap.val()).sort((a,b)=>parseTanggal(a.tanggal)-parseTanggal(b.tanggal));
+
+let saldoAwal=0;
+let saldoBerjalan=0;
+let totalMasuk=0;
+let totalKeluar=0;
+
+// Saldo awal
+data.forEach(i=>{
+const t=new Date(i.tanggal);
+const ym=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0");
+if(ym < filterBulan){ if(i.tipe==="masuk") saldoAwal+=i.jumlah; if(i.tipe==="keluar") saldoAwal-=i.jumlah; }
+});
+
+// Filter
+data=data.filter(i=>{
+const t=new Date(i.tanggal);
+const ym=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0");
+if(ym !== filterBulan) return false;
+if(sumber!=="all" && i.sumberKas!==sumber) return false;
+return true;
+});
+
+saldoBerjalan=saldoAwal;
+
+const rows=[];
+rows.push(["Saldo Awal","", "", "", formatRp(saldoAwal),""]);
+
+data.forEach(i=>{
+let masuk="", keluar="";
+if(i.tipe==="masuk"){ masuk=formatRp(i.jumlah); saldoBerjalan+=i.jumlah; totalMasuk+=i.jumlah; }
+if(i.tipe==="keluar"){ keluar=formatRp(i.jumlah); saldoBerjalan-=i.jumlah; totalKeluar+=i.jumlah; }
+rows.push([new Date(i.tanggal).toLocaleDateString("id-ID"),i.keterangan||"-",masuk,keluar,formatRp(saldoBerjalan),i.sumberKas.toUpperCase()]);
+});
+
+// Header PDF
+doc.setFontSize(16);
+doc.text("BUKU KAS KOPERASI ARFA DRIVER",105,15,{align:"center"});
+doc.setFontSize(11);
+doc.text("Periode : "+filterBulan,14,25);
+doc.text("Tanggal Cetak : "+new Date().toLocaleString("id-ID"),14,32);
+
+doc.autoTable({
+head:[["Tanggal","Keterangan","Masuk","Keluar","Saldo","Sumber"]],
+body:rows,
+startY:40
+});
+
+const y=doc.lastAutoTable.finalY + 10;
+doc.text("TOTAL MASUK: "+formatRp(totalMasuk),14,y);
+doc.text("TOTAL KELUAR: "+formatRp(totalKeluar),14,y+7);
+doc.text("SALDO AKHIR: "+formatRp(saldoBerjalan),14,y+14);
+
+doc.save("buku_kas_"+filterBulan+".pdf");
+}
+</script>
+
+</body>
+</html>

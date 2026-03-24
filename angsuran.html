@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angsuran Pinjaman</title>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:linear-gradient(to right,#1e90ff,#0f3057);color:white;padding:14px;text-align:center;font-size:16px;}
+.container{padding:10px;}
+.card{background:white;padding:14px;border-radius:12px;margin-bottom:15px;box-shadow:0 3px 6px rgba(0,0,0,0.08);}
+input,select{width:100%;padding:8px;margin:6px 0 10px;border:1px solid #ccc;border-radius:6px;}
+button{padding:7px 12px;border:none;border-radius:6px;cursor:pointer;}
+.btn-simpan{background:#28a745;color:white;width:100%;}
+.angsuran-card{background:white;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 2px 5px rgba(0,0,0,0.08);}
+.nama{font-weight:bold;font-size:14px;margin-bottom:4px;}
+.nomor{font-size:12px;color:#666;margin-bottom:6px;}
+.row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+.jumlah{font-weight:bold;color:#28a745;}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px;color:white;}
+.cash{background:#28a745;}
+.bank{background:#007bff;}
+.icon-btn{border:none;background:none;cursor:pointer;}
+.icon-edit{color:#ffc107;}
+.icon-delete{color:#dc3545;}
+.popup{position:fixed;font-size:12px;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:9999;}
+.popup.active{display:flex;}
+.popup-box{background:white;padding:20px;border-radius:10px;width:320px;max-width:90%;box-shadow:0 6px 15px rgba(0,0,0,0.2);position:relative;z-index:10000;}
+.angsuran-card:hover{transform:scale(1.01);transition:0.2s;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand img{width:42px;height:42px;border-radius:50%;object-fit:cover;}
+.brand-text .subtitle{font-size:12px;opacity:0.9;}
+.brand-text .title{font-size:16px;font-weight:bold;}
+.progress{height:6px;background:#eee;border-radius:5px;overflow:hidden;margin:6px 0 10px;}
+.progress-bar{height:100%;background:#28a745;}
+.lunas{color:#28a745;font-weight:bold;}
+
+
+  </style>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="img/icon-192.png">
+    <div class="brand-text">
+      <div class="subtitle">Koperasi</div>
+      <div class="title">ARFA DRIVER</div>
+      </div>
+  <button class="btn-primary" onclick="kembali()">Kembali</button>
+      
+  </div>
+</header>
+
+<div class="card" id="formAngsuran">
+  <h3>👥 Data angsuran</h3>
+</div>
+
+<div class="container">
+  <div class="card">
+  Saldo Kas : Rp <span id="saldoKas">0</span>
+</div>
+  
+  <div class="card">
+    <div class="row"><span>Angsuran Aktif</span><span id="statAktif">0</span></div>
+    <div class="row"><span>Total Pinjaman Aktif</span><span id="statPinjaman">Rp0</span></div>
+    <div class="row"><span>Total Sisa Pinjaman</span><span id="statSisa">Rp0</span></div>
+  </div>
+
+  <div class="card" id="formTambah">
+    <h3>Tambah Angsuran</h3>
+    <label>Pilih Pinjaman</label>
+    <select id="pinjamanSelect"></select>
+    <label>Tanggal</label>
+    <input type="date" id="tanggal">
+    <label>Jumlah</label>
+    <input type="number" id="jumlah">
+    <label>Metode</label>
+    <select id="metode">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+    <button class="btn-simpan" onclick="simpanAngsuran()">Simpan Angsuran</button>
+  </div>
+
+  
+  <div class="card">
+    <h3>Daftar Angsuran</h3>
+    <div id="listAngsuran"></div>
+  </div>
+</div>
+
+<!-- Popup Edit -->
+<div id="popupEdit" class="popup">
+  <div class="popup-box">
+    <h3>Edit Angsuran</h3>
+    <label>Nama</label>
+    <input type="text" id="editNama">
+    <label>Tanggal</label>
+    <input type="date" id="editTanggal">
+    <label>Jumlah</label>
+    <input type="number" id="editJumlah" readonly>
+    <br><br>
+    <button style="background:#28a745;color:white" onclick="updateAngsuran()">Update</button>
+    <button style="background:#dc3545;color:white" onclick="tutupPopup()">Batal</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey:"AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain:"arfa-c7dee.firebaseapp.com",
+  databaseURL:"https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId:"arfa-c7dee",
+  storageBucket:"arfa-c7dee.firebasestorage.app",
+  messagingSenderId:"468058520812",
+  appId:"1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const role = localStorage.getItem("role") || "user";
+if(!role){
+  alert("Silakan login dulu");
+  window.location.href="index.html";
+}
+
+const pinjamanRef = ref(db,"pinjaman");
+const angsuranRef = ref(db,"angsuran");
+const kasRef = ref(db,"kas");
+
+const pinjamanSelect = document.getElementById("pinjamanSelect");
+const listAngsuran = document.getElementById("listAngsuran");
+
+let dataPinjaman = {};
+let dataAngsuran = {};
+let editId = null;
+let pinjamanLoaded = false;
+let angsuranLoaded = false;
+
+// ===== HELPERS =====
+function rupiah(n){ return n.toLocaleString("id-ID",{style:"currency",currency:"IDR"});}
+function inputDate(t){ let d=new Date(t); return d.toISOString().split("T")[0];}
+function formatTanggal(t){ if(!t) return "-"; let d=new Date(t); return isNaN(d)?t:d.toLocaleDateString("id-ID"); }
+function hitungSaldoKas(){
+  onValue(kasRef, snap=>{
+    let saldo = 0;
+
+    snap.forEach(d=>{
+      let k = d.val();
+      let jumlah = Number(k.jumlah || 0);
+
+      if(k.tipe === "masuk") saldo += jumlah;
+      else saldo -= jumlah;
+    });
+
+    document.getElementById("saldoKas").innerText =
+      saldo.toLocaleString("id-ID");
+
+    console.log("Saldo Kas:", saldo);
+  });
+}
+  
+function getSisaPinjaman(pinjamanId){
+  let p = dataPinjaman[pinjamanId];
+  if(!p) return {pinjaman:0,angsuran:0,sisa:0};
+  let totalPinjaman = Number(p.jumlah) || 0;
+  let totalAngsuran = 0;
+  Object.values(dataAngsuran).forEach(a=>{
+    if(a.pinjamanId === pinjamanId){
+      totalAngsuran += Number(a.jumlah) || 0;
+    }
+  });
+  return { pinjaman: totalPinjaman, angsuran: totalAngsuran, sisa: Math.max(totalPinjaman-totalAngsuran,0) };
+}
+  
+
+// ===== STATISTIK =====
+function hitungStatistik(){
+  let aktif=0,totalPinjaman=0,totalSisa=0;
+  Object.keys(dataPinjaman).forEach(pinId=>{
+    let info = getSisaPinjaman(pinId);
+    if(info.sisa > 0){ aktif++; totalPinjaman+=info.pinjaman; totalSisa+=info.sisa; }
+  });
+  document.getElementById("statAktif").innerText = aktif;
+  document.getElementById("statPinjaman").innerText = rupiah(totalPinjaman);
+  document.getElementById("statSisa").innerText = rupiah(totalSisa);
+}
+
+// ===== LOAD PINJAMAN =====
+function loadPinjaman(){
+
+  pinjamanSelect.innerHTML = "<option value=''>Pilih anggota peminjam</option>";
+
+  Object.entries(dataPinjaman)
+  .sort((a,b)=>a[1].nama.localeCompare(b[1].nama))
+  .forEach(([id,p])=>{
+
+    let info = getSisaPinjaman(id);
+
+    // HANYA TAMPILKAN YANG BELUM LUNAS
+    if(info.sisa > 0){
+
+      let option = document.createElement("option");
+
+      option.value = id;
+      option.textContent =
+        `${p.nama} | ${p.nomor} (Sisa ${rupiah(info.sisa)})`;
+
+      pinjamanSelect.appendChild(option);
+    }
+  });
+}
+  
+// ===== LOAD DATA =====
+onValue(pinjamanRef,snap=>{
+  dataPinjaman={};
+  snap.forEach(d=>{ dataPinjaman[d.key]=d.val(); });
+  pinjamanLoaded = true;
+  if(pinjamanLoaded && angsuranLoaded){ loadPinjaman(); render(); }
+});
+
+onValue(angsuranRef,snap=>{
+  dataAngsuran={};
+
+  snap.forEach(d=>{
+    let a=d.val();
+    let key=d.key;
+
+    a.jumlah = Number(a.jumlah) || 0;
+
+    // ===== PERBAIKI FORMAT TANGGAL LAMA =====
+    if(a.tanggal && typeof a.tanggal==="string"){
+
+      let parsed = Date.parse(a.tanggal);
+
+      if(!isNaN(parsed)){
+        a.tanggal = parsed;
+
+        // update ke firebase supaya permanen
+        update(ref(db,"angsuran/"+key),{
+          tanggal:parsed
+        });
+
+      }else{
+        a.tanggal = Date.now();
+      }
+
+    }
+
+    if(!a.tanggal){
+      a.tanggal = Date.now();
+    }
+
+    dataAngsuran[key]=a;
+  });
+
+  angsuranLoaded = true;
+
+  if(pinjamanLoaded && angsuranLoaded){
+    loadPinjaman();
+    render();
+  }
+
+});
+
+// ===== RENDER =====//
+  function render(){
+
+  listAngsuran.innerHTML="";
+
+  // ===== HITUNG TOTAL ANGSURAN PER PINJAMAN =====
+  let mapAngsuran = {};
+
+  Object.entries(dataAngsuran).forEach(([id,a])=>{
+    if(!mapAngsuran[a.pinjamanId]){
+      mapAngsuran[a.pinjamanId] = {
+        total:0,
+        list:[]
+      };
+    }
+
+    mapAngsuran[a.pinjamanId].total += Number(a.jumlah)||0;
+    mapAngsuran[a.pinjamanId].list.push({id,...a});
+  });
+
+
+  // ===== LOOP PINJAMAN =====
+  Object.entries(dataPinjaman)
+  .sort((a,b)=>a[1].nama.localeCompare(b[1].nama))
+  .forEach(([pinId,p])=>{
+
+    let totalPinjaman = Number(p.jumlah)||0;
+
+    let totalAngsuran = mapAngsuran[pinId]?.total || 0;
+
+    let sisa = Math.max(totalPinjaman-totalAngsuran,0);
+
+    let persen = totalPinjaman>0 ? Math.round((totalAngsuran/totalPinjaman)*100) : 0;
+
+    let status = sisa<=0
+      ? `<span class="lunas">LUNAS</span>`
+      : rupiah(sisa);
+
+    let card=document.createElement("div");
+    card.className="angsuran-card";
+
+    card.innerHTML=`
+      <div class="nama">${p.nama}</div>
+      <div class="nomor">${p.nomor}</div>
+
+      <div class="row">
+        <span>Pinjaman</span>
+        <span>${rupiah(totalPinjaman)}</span>
+      </div>
+
+      <div class="row">
+        <span>Total Angsuran</span>
+        <span>${rupiah(totalAngsuran)}</span>
+      </div>
+
+      <div class="row">
+        <span>Sisa Pinjaman</span>
+        <span style="color:#dc3545;font-weight:bold">${status}</span>
+      </div>
+
+      <div class="progress">
+        <div class="progress-bar" style="width:${persen}%"></div>
+      </div>
+
+      <hr>
+
+      <div id="listAngsuran-${pinId}"></div>
+    `;
+
+    listAngsuran.appendChild(card);
+
+    let listDiv = card.querySelector(`#listAngsuran-${pinId}`);
+
+    let list = mapAngsuran[pinId]?.list || [];
+
+    list
+    .sort((a,b)=>b.tanggal-a.tanggal)
+    .forEach(a=>{
+
+      let row=document.createElement("div");
+      row.className="row";
+
+      row.innerHTML=`
+        <span>
+        ${formatTanggal(a.tanggal)} - ${a.nama}
+        (${rupiah(a.jumlah)})
+        <span class="badge ${a.metode}">${a.metode}</span>
+        </span>
+
+        <span>
+        ${role==="admin"?`
+        <button class="icon-btn icon-edit">
+        <span class="material-icons">edit</span>
+        </button>
+
+        <button class="icon-btn icon-delete">
+        <span class="material-icons">delete</span>
+        </button>
+        `:""}
+        </span>
+      `;
+
+      let btnEdit=row.querySelector(".icon-edit");
+      let btnDelete=row.querySelector(".icon-delete");
+
+      if(btnEdit) btnEdit.onclick=()=>editAngsuran(a.id);
+      if(btnDelete) btnDelete.onclick=()=>hapusAngsuran(a.id);
+
+      listDiv.appendChild(row);
+
+    });
+
+  });
+
+  hitungStatistik();
+}
+  
+// ===== SIMPAN =====
+async function simpanAngsuran(){
+  if(role!=="admin"){ alert("Hanya admin yang bisa menambah angsuran"); return; }
+  let pinId=pinjamanSelect.value;
+  let tanggal=document.getElementById("tanggal").value;
+  let jumlah=parseInt(document.getElementById("jumlah").value)||0;
+  let metode=document.getElementById("metode").value;
+  if(!pinId || !tanggal || isNaN(jumlah)){alert("Data tidak valid"); return;}
+  let p=dataPinjaman[pinId];
+  let info = getSisaPinjaman(pinId);
+  if(jumlah > info.sisa){ alert("Jumlah angsuran melebihi sisa pinjaman!"); return; }
+  let newAngsuran={pinjamanId:pinId,nama:p.nama,tanggal:new Date(tanggal).getTime(),jumlah,metode};
+  let angRef=await push(angsuranRef,newAngsuran);
+  let kasPush = await push(kasRef,{
+    tanggal:new Date(tanggal).getTime(),
+    keterangan:`Angsuran (${p.nama})`,
+    tipe:"masuk",
+    sumberKas:metode,
+    jumlah
+  });
+  await update(ref(db,"angsuran/"+angRef.key),{kasId: kasPush.key});
+  document.getElementById("tanggal").valueAsDate=new Date();
+  document.getElementById("jumlah").value="";
+}
+
+// ===== EDIT & UPDATE =====
+function editAngsuran(id){
+  if(role!=="admin") return;
+  if(!dataAngsuran[id]) return;
+  let a=dataAngsuran[id]; editId=id;
+  document.getElementById("editNama").value=a.nama||"";
+  document.getElementById("editTanggal").value=inputDate(a.tanggal);
+  document.getElementById("editJumlah").value=a.jumlah||0;
+  document.getElementById("popupEdit").classList.add("active");
+}
+async function updateAngsuran(){
+  if(role!=="admin"){
+    alert("Hanya admin yang bisa mengupdate angsuran");
+    return;
+  }
+
+  if(!editId) return;
+
+  let nama = document.getElementById("editNama").value;
+  let tanggal = document.getElementById("editTanggal").value;
+
+  if(!nama || !tanggal){
+    alert("Data tidak valid");
+    return;
+  }
+
+  let a = dataAngsuran[editId];
+  let kasId = a.kasId || null; // simpan dulu
+  let timestamp = new Date(tanggal).getTime();
+
+  try{
+
+    await update(ref(db,"angsuran/"+editId),{
+      nama:nama,
+      tanggal:timestamp
+    });
+
+    if(kasId){
+      await update(ref(db,"kas/"+kasId),{
+        tanggal:timestamp,
+        keterangan:`Angsuran (${nama})`
+      });
+    }
+
+    tutupPopup(); // tutup popup setelah selesai
+
+  }catch(err){
+    console.error(err);
+    alert("Update gagal");
+  }
+}
+
+// ===== HAPUS =====
+async function hapusAngsuran(id){
+  if(role!=="admin"){ alert("Hanya admin yang bisa menghapus angsuran"); return; }
+  if(!confirm("Yakin ingin menghapus angsuran ini? Kas juga akan dikoreksi!")) return;
+  let a=dataAngsuran[id];
+  await remove(ref(db,"angsuran/"+id));
+  if(a.kasId){ await remove(ref(db,"kas/"+a.kasId)); }
+}
+
+// ===== POPUP =====
+function tutupPopup(){
+  document.getElementById("popupEdit").classList.remove("active");
+  editId = null;
+  document.getElementById("editNama").value="";
+  document.getElementById("editTanggal").value="";
+}
+  
+// ===== ROLE BASED =====
+if(role!=="admin"){ document.getElementById("formTambah").style.display="none"; }
+window.updateAngsuran = updateAngsuran;
+window.tutupPopup = tutupPopup;
+window.simpanAngsuran = simpanAngsuran;
+window.editAngsuran = editAngsuran;
+window.hapusAngsuran = hapusAngsuran;
+  
+  /* ================= KEMBALI ================= */
+window.kembali = function(){
+  window.location.href="dashboard.html";
+}
+  // ===== INIT =====
+hitungSaldoKas();
+  </script>
+</body>
+</html>

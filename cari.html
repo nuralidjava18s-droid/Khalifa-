@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riwayat Anggota</title>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:#1e90ff;color:white;padding:14px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
+.card{background:white;padding:12px;margin-bottom:12px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);}
+select,input{width:100%;padding:8px;margin-bottom:10px;border-radius:6px;border:1px solid #ccc;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #ddd;padding:6px;text-align:left;cursor:pointer;}
+th{background:#f1f1f1;}
+button{padding:6px 10px;border:none;border-radius:4px;background:#1e90ff;color:white;cursor:pointer;}
+button.btn-danger{background:red;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:9999;}
+.modal-content{background:white;padding:15px;border-radius:10px;width:90%;max-width:360px;box-shadow:0 6px 12px rgba(0,0,0,.2);}
+.modal-content h3{margin-top:0;margin-bottom:10px;}
+input,select{width:100%;padding:8px;margin-bottom:10px;border-radius:6px;border:1px solid #ccc;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>Riwayat Anggota</div>
+  <button onclick="window.location='dashboard.html'">Kembali</button>
+</header>
+
+<div class="container">
+  <div class="card">
+    <select id="selectAnggota">
+      <option value="">-- Pilih Anggota --</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h3>Simpanan</h3>
+    <table id="tabelSimpanan"></table>
+  </div>
+
+  <div class="card">
+    <h3>Pinjaman</h3>
+    <table id="tabelPinjaman"></table>
+  </div>
+
+  <div class="card">
+    <h3>Angsuran</h3>
+    <table id="tabelAngsuran"></table>
+  </div>
+</div>
+
+<!-- MODAL EDIT -->
+<div class="modal" id="modalEdit">
+  <div class="modal-content">
+    <h3>Edit Data</h3>
+    <input type="hidden" id="editPath">
+    <input type="hidden" id="editKey">
+    <label>Jenis</label>
+    <input type="text" id="editJenis">
+    <label>Sumber Kas</label>
+    <select id="editSumberKas">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+    <label>Jumlah</label>
+    <input type="number" id="editJumlah">
+    <label>Tanggal</label>
+    <input type="date" id="editTanggal">
+    <label>Keterangan</label>
+    <input type="text" id="editKeterangan">
+    <button id="simpanBtn" onclick="updateData()">Simpan</button>
+    <button id="hapusBtn" class="btn-danger" onclick="hapusData()">Hapus</button>
+    <button onclick="tutupModal()">Tutup</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey:"AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain:"arfa-c7dee.firebaseapp.com",
+  databaseURL:"https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId:"arfa-c7dee",
+  storageBucket:"arfa-c7dee.firebasestorage.app",
+  messagingSenderId:"468058520812",
+  appId:"1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let role = localStorage.getItem("role") || "user"; // admin / user
+
+const anggotaRef = ref(db,"anggota");
+const simpananRef = ref(db,"simpanan");
+const pinjamanRef = ref(db,"pinjaman");
+const angsuranRef = ref(db,"angsuran");
+const kasRef = ref(db,"kas");
+
+let anggotaMap = {};
+let dataAll = {simpanan:{}, pinjaman:{}, angsuran:{}};
+
+// Load anggota
+onValue(anggotaRef, snap => {
+  anggotaMap = {};
+  snap.forEach(child => {
+    anggotaMap[child.key] = child.val().nama;
+  });
+  updateDropdown();
+});
+
+// Load semua data & update dropdown hanya anggota yang punya data
+[simpananRef,pinjamanRef,angsuranRef].forEach((r,idx)=>{
+  const type = idx===0 ? "simpanan" : idx===1 ? "pinjaman" : "angsuran";
+  onValue(r, snap => {
+    dataAll[type] = {};
+    snap.forEach(child=>{
+      let d = child.val();
+      if(d.tanggal && typeof d.tanggal==="string") d.tanggal = Date.parse(d.tanggal.replace(/\./g,":"));
+      if(!d.tanggal) d.tanggal = Date.now();
+      dataAll[type][child.key] = d;
+    });
+    updateDropdown();  // dropdown anggota hanya yang punya data
+    renderAll();
+  });
+});
+
+// Update dropdown anggota
+function updateDropdown(){
+  const select = document.getElementById("selectAnggota");
+  select.innerHTML = '<option value="">-- Pilih Anggota --</option>';
+  const anggotaSet = new Set();
+  ["simpanan","pinjaman","angsuran"].forEach(type=>{
+    Object.values(dataAll[type]).forEach(d=>{
+      if(d.anggotaId) anggotaSet.add(d.anggotaId);
+    });
+  });
+  Object.entries(anggotaMap)
+    .filter(([k])=> anggotaSet.has(k))
+    .sort((a,b)=>a[1].localeCompare(b[1]))
+    .forEach(([k,name])=>{
+      select.innerHTML += `<option value="${k}">${name}</option>`;
+    });
+}
+
+// Dropdown change
+document.getElementById("selectAnggota").addEventListener("change", renderAll);
+
+// Render semua tabel
+function renderAll(){
+  const idTerpilih = document.getElementById("selectAnggota").value;
+  renderTable("simpanan", idTerpilih);
+  renderTable("pinjaman", idTerpilih);
+  renderTable("angsuran", idTerpilih);
+}
+
+// Render table per jenis
+function renderTable(path,idTerpilih){
+  const tableId = path==="simpanan"?"tabelSimpanan":path==="pinjaman"?"tabelPinjaman":"tabelAngsuran";
+  const table = document.getElementById(tableId);
+  table.innerHTML="";
+  const data = dataAll[path];
+  if(!data) return;
+
+  let rows = [];
+  Object.entries(data).forEach(([k,v])=>{
+    let idAnggota = v.idAnggota || v.anggotaId || v.anggota || "";
+    if(idTerpilih && idAnggota!==idTerpilih) return;
+    rows.push({key:k,data:v});
+  });
+
+  if(rows.length===0){
+    table.innerHTML="<tr><td colspan='10' style='text-align:center'>Data tidak ditemukan</td></tr>";
+    return;
+  }
+
+  rows.sort((a,b)=>(b.data.tanggal||0)-(a.data.tanggal||0));
+
+  const fields=["nama","jenis","sumberKas","jumlah","tanggal","keterangan"];
+  let html="<tr>";
+  fields.forEach(f=> html+="<th>"+f+"</th>");
+  html+="</tr>";
+
+  rows.forEach(r=>{
+    html+=`<tr onclick="editData('${path}','${r.key}')">`;
+    fields.forEach(f=>{
+      let val = r.data[f];
+      if(f==="keterangan") val = r.data.keterangan || r.data.ket || "";
+      if(f==="nama") val = anggotaMap[r.data.idAnggota || r.data.anggotaId || r.data.anggota] || r.data.nama || "";
+      if(f==="tanggal" && val) val = new Date(val).toLocaleDateString("id-ID");
+      html+=`<td>${val||""}</td>`;
+    });
+    html+="</tr>";
+  });
+  table.innerHTML = html;
+}
+
+// Popup edit
+window.editData = function(path,key){
+  const item = dataAll[path][key];
+  if(!item) return;
+
+  document.getElementById("editPath").value = path;
+  document.getElementById("editKey").value = key;
+  document.getElementById("editJenis").value = item.jenis || "";
+  document.getElementById("editSumberKas").value = item.sumberKas || "cash";
+  document.getElementById("editJumlah").value = item.jumlah || 0;
+  document.getElementById("editTanggal").value = item.tanggal ? new Date(item.tanggal).toISOString().split("T")[0] : "";
+  document.getElementById("editKeterangan").value = item.keterangan || "";
+
+  const fields=["editJenis","editSumberKas","editJumlah","editTanggal","editKeterangan"];
+  if(role!=="admin") fields.forEach(id=>document.getElementById(id).disabled=true);
+
+  document.getElementById("hapusBtn").style.display = role==="admin"?"inline-block":"none";
+  document.getElementById("simpanBtn").style.display = role==="admin"?"inline-block":"none"; // hide save button for user
+
+  document.getElementById("modalEdit").style.display="flex";
+}
+
+// Tutup modal
+window.tutupModal = function(){
+  document.getElementById("modalEdit").style.display="none";
+}
+
+// Update data (admin)
+window.updateData = async function(){
+  if(role!=="admin"){ alert("Hanya admin"); return; }
+  const path = document.getElementById("editPath").value;
+  const key = document.getElementById("editKey").value;
+  if(!path || !key){ alert("Data tidak ditemukan"); return; }
+
+  const tanggalInput = document.getElementById("editTanggal").value;
+  if(!tanggalInput){ alert("Tanggal wajib diisi"); return; }
+  const tanggal = new Date(tanggalInput).getTime();
+  const jumlah = Number(document.getElementById("editJumlah").value);
+  const sumberKas = document.getElementById("editSumberKas").value;
+  const keterangan = document.getElementById("editKeterangan").value;
+  const updated = { tanggal, keterangan, jumlah, sumberKas };
+  if(path==="simpanan") updated.jenis = document.getElementById("editJenis").value;
+
+  await update(ref(db, path+"/"+key), updated);
+
+  let item = dataAll[path][key];
+  if(item?.kasId){
+    await update(ref(db,"kas/"+item.kasId),{
+      tanggal: tanggal,
+      sumberKas: sumberKas,
+      jumlah: jumlah,
+      keterangan: keterangan
+    });
+  }
+
+  alert("Data berhasil diperbarui");
+  tutupModal();
+}
+
+// Hapus data (admin)
+window.hapusData = async function(){
+  if(role!=="admin"){ alert("Hanya admin"); return; }
+  const path = document.getElementById("editPath").value;
+  const key = document.getElementById("editKey").value;
+  if(!path || !key){ alert("Data tidak ditemukan"); return; }
+
+  if(confirm("Yakin ingin menghapus data?")){
+    let item = dataAll[path][key];
+    await remove(ref(db, path+"/"+key));
+    if(item?.kasId) await remove(ref(db,"kas/"+item.kasId));
+    alert("Data berhasil dihapus");
+    tutupModal();
+  }
+}
+</script>
+</body>
+</html>

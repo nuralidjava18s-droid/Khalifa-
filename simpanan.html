@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpanan Anggota</title>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;}
+header{background:linear-gradient(to right,#1e90ff,#0f3057);color:white;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand img{width:42px;height:42px;border-radius:50%;}
+.container{padding:20px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.1);}
+.total{font-size:18px;font-weight:bold;}
+.anggota-card{border-left:5px solid #1e90ff;padding:12px;margin-bottom:12px;border-radius:8px;background:white;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;}
+.anggota-card-row{display:flex;justify-content:space-between;margin-bottom:5px;}
+input,select{width:100%;padding:8px;margin-bottom:10px;border-radius:6px;border:1px solid #ccc;}
+button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;background:#1e90ff;color:white;}
+.btn-danger{background:red;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);justify-content:center;align-items:center;}
+.modal-content{background:white;padding:20px;width:90%;max-width:400px;border-radius:10px;}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+</head>
+<body>
+
+<header>
+<div class="brand">
+<img src="img/icon-192.png">
+<div>
+<div>Koperasi</div>
+<b>ARFA DRIVER</b>
+</div>
+</div>
+
+<div>
+<button id="btnPDF">Export PDF</button>
+<button onclick="window.location='dashboard.html'">Kembali</button>
+</div>
+</header>
+
+<div class="container">
+
+<div class="card total">
+Total Simpanan : Rp <span id="totalSimpanan">0</span>
+</div>
+
+<div class="card" id="formTambah">
+<h3>Tambah Simpanan</h3>
+
+<select id="anggotaSelect"></select>
+
+<select id="jenis">
+<option value="pokok">Simpanan Pokok</option>
+<option value="wajib">Simpanan Wajib</option>
+<option value="sukarela">Simpanan Sukarela</option>
+</select>
+
+<label>Metode</label>
+<select id="metode">
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+</select>
+
+<input type="number" id="jumlah" placeholder="Jumlah">
+<input type="text" id="keterangan" placeholder="Keterangan">
+
+<button id="btnSimpan">Simpan</button>
+</div>
+  
+<div class="card">
+<h3>Data Simpanan Anggota</h3>
+
+<input type="text" id="search" placeholder="Cari nama..." oninput="location.reload()">
+
+<!-- 🔥 WAJIB ADA -->
+<div id="cardContainer"></div>
+
+</div>
+
+  
+<!-- MODAL -->
+<div class="modal" id="modalForm">
+<div class="modal-content">
+
+<h3>Edit Simpanan</h3>
+
+<input type="hidden" id="editId">
+
+<label>Nama</label>
+<input type="text" id="editNama" disabled>
+
+<label>Jenis</label>
+<select id="editJenis">
+<option value="pokok">Pokok</option>
+<option value="wajib">Wajib</option>
+<option value="sukarela">Sukarela</option>
+</select>
+
+<label>Jumlah</label>
+<input type="number" id="editJumlah">
+
+<button onclick="updateData()">Simpan</button>
+<button class="btn-danger" onclick="hapusData()">Hapus</button>
+<button onclick="tutupModal()">Tutup</button>
+
+</div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, update, remove }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSy",
+authDomain: "arfa-c7dee.firebaseapp.com",
+databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+projectId: "arfa-c7dee",
+storageBucket: "arfa-c7dee.appspot.com",
+messagingSenderId: "468058520812",
+appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const anggotaRef = ref(db,"anggota");
+const simpananRef = ref(db,"simpanan");
+const kasRef = ref(db,"kas");
+
+let anggotaMap = {};
+let semuaTransaksi = {};
+let anggotaData = {};
+
+const role = localStorage.getItem("role") || "user";
+if(role !== "admin"){
+document.getElementById("formTambah").style.display = "none";
+}
+
+/* LOAD ANGGOTA */
+onValue(anggotaRef,snapshot=>{
+const select=document.getElementById("anggotaSelect");
+select.innerHTML="<option value=''>Pilih Anggota</option>";
+
+snapshot.forEach(child=>{
+const data=child.val();
+anggotaMap[child.key]=data;
+
+const opt=document.createElement("option");
+opt.value=child.key;
+opt.textContent=data.nama+" ("+data.id+")";
+select.appendChild(opt);
+});
+});
+
+/* LOAD SIMPANAN */
+onValue(simpananRef,snapshot=>{
+const container=document.getElementById("cardContainer");
+
+// 🔥 Loading dulu
+container.innerHTML="<p style='text-align:center'>Loading...</p>";
+
+let total=0;
+let rekap={};
+semuaTransaksi={};
+
+// 🔥 Ambil data dulu
+snapshot.forEach(child=>{
+const data=child.val();
+const key=child.key;
+
+const jumlah=Number(data.jumlah)||0;
+total+=jumlah;
+
+semuaTransaksi[key]=data;
+
+const anggotaId = data.anggotaId;
+if(!anggotaId) return;
+
+const anggota = anggotaMap[anggotaId] || {};
+
+if(!rekap[anggotaId]){
+rekap[anggotaId]={
+nama: anggota.nama || data.nama,
+id: anggota.id || data.idAnggota || "-",
+pokok:0,
+wajib:0,
+sukarela:0
+};
+}
+
+if(!["pokok","wajib","sukarela"].includes(data.jenis)) return;
+
+rekap[anggotaId][data.jenis]+=jumlah;
+});
+
+// 🔥 Simpan ke global
+anggotaData=rekap;
+
+// 🔥 Reset container (hapus loading)
+container.innerHTML="";
+
+// 🔥 Urutkan
+const keyword = document.getElementById("search").value.toLowerCase();
+
+const sortedKeys = Object.keys(rekap)
+.filter(id => (rekap[id].nama || "").toLowerCase().includes(keyword))
+.sort((a,b)=>rekap[a].nama.localeCompare(rekap[b].nama));
+
+// 🔥 Render card
+for(const id of sortedKeys){
+const a=rekap[id];
+const totalA=a.pokok+a.wajib+a.sukarela;
+
+const card=document.createElement("div");
+card.className="anggota-card";
+
+card.innerHTML=`
+  <div class="anggota-card-row">
+    <b>${a.nama}</b>
+    <span>${a.id || "-"}</span>
+  </div>
+
+  <div class="anggota-card-row">
+    <span>Pokok</span>
+    <span>Rp ${Number(a.pokok||0).toLocaleString("id-ID")}</span>
+  </div>
+
+  <div class="anggota-card-row">
+    <span>Wajib</span>
+    <span>Rp ${Number(a.wajib||0).toLocaleString("id-ID")}</span>
+  </div>
+
+  <div class="anggota-card-row">
+    <span>Sukarela</span>
+    <span>Rp ${Number(a.sukarela||0).toLocaleString("id-ID")}</span>
+  </div>
+
+  <div class="anggota-card-row total">
+    <b>Total</b>
+    <b>Rp ${(
+      Number(a.pokok||0)+
+      Number(a.wajib||0)+
+      Number(a.sukarela||0)
+    ).toLocaleString("id-ID")}</b>
+  </div>
+`;
+
+card.onclick=()=>bukaModal(id);
+container.appendChild(card);
+}
+
+// 🔥 Total global
+document.getElementById("totalSimpanan").innerText=
+total.toLocaleString("id-ID");
+
+});
+  
+  
+  function formatTanggal(t){
+return new Date(t).toLocaleDateString("id-ID");
+}
+  
+/* TAMBAH */
+document.getElementById("btnSimpan").onclick=async()=>{
+const id=document.getElementById("anggotaSelect").value;
+if(!id) return alert("Pilih anggota");
+
+const anggota=anggotaMap[id];
+const jenis=document.getElementById("jenis").value;
+const jumlah=Number(document.getElementById("jumlah").value);
+const ket=document.getElementById("keterangan").value;
+const metode=document.getElementById("metode").value;
+
+if(!jumlah||jumlah<=0) return alert("Jumlah tidak valid");
+
+await push(simpananRef,{
+anggotaId:id,
+idAnggota:anggota.id,
+nama:anggota.nama,
+jenis,
+jumlah,
+keterangan:ket,
+tanggal:Date.now()
+});
+
+await push(kasRef,{
+tanggal:Date.now(),
+keterangan:`Simpanan ${jenis} (${anggota.nama})`,
+tipe:"masuk",
+sumberKas:metode,
+jumlah
+});
+
+document.getElementById("jumlah").value="";
+document.getElementById("keterangan").value="";
+document.getElementById("anggotaSelect").value="";
+document.getElementById("jenis").value="pokok";
+document.getElementById("metode").value="cash";
+};
+
+/* MODAL */
+function bukaModal(anggotaId){
+
+let found=null;
+
+for(const key in semuaTransaksi){
+const d=semuaTransaksi[key];
+
+if(d.anggotaId == anggotaId){
+if(!found || d.tanggal > found.tanggal){
+found = { ...d, key };
+}
+}
+}
+
+if(found){
+document.getElementById("editId").value=found.key;
+document.getElementById("editNama").value=found.nama;
+document.getElementById("editJenis").value=found.jenis;
+document.getElementById("editJumlah").value=found.jumlah;
+
+document.getElementById("modalForm").style.display="flex";
+return;
+}
+
+alert("Tidak ada data");
+}
+
+window.tutupModal=()=>document.getElementById("modalForm").style.display="none";
+
+/* UPDATE */
+window.updateData=async()=>{
+if(role!=="admin") return alert("Hanya admin");
+
+const id=document.getElementById("editId").value;
+const jenis=document.getElementById("editJenis").value;
+const jumlah=Number(document.getElementById("editJumlah").value);
+
+await update(ref(db,"simpanan/"+id),{jenis,jumlah});
+tutupModal();
+};
+
+/* HAPUS */
+window.hapusData=async()=>{
+if(role!=="admin") return alert("Hanya admin");
+
+const id=document.getElementById("editId").value;
+
+if(confirm("Yakin hapus?")){
+await remove(ref(db,"simpanan/"+id));
+tutupModal();
+}
+};
+
+/* PDF */
+document.getElementById("btnPDF").onclick=function(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+
+doc.text("Laporan Simpanan Anggota",105,15,{align:"center"});
+
+let rows=[],grand=0;
+
+for(const id in anggotaData){
+const a=anggotaData[id];
+const t=a.pokok+a.wajib+a.sukarela;
+grand+=t;
+rows.push([a.nama,a.pokok,a.wajib,a.sukarela,t]);
+}
+
+doc.autoTable({
+head:[["Nama","Pokok","Wajib","Sukarela","Total"]],
+body:rows,
+startY:25
+});
+
+doc.text("Total: Rp "+grand.toLocaleString("id-ID"),14,doc.lastAutoTable.finalY+10);
+doc.save("simpanan.pdf");
+};
+  
+  
+
+</script>
+
+</body>
+</html>

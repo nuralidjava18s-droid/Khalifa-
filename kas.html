@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kas Koperasi</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f4f6f9;
+  font-size: 14px;
+}
+  header{
+  background: linear-gradient(to right, #1e90ff, #0f3057);
+  color:white;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.brand-text .subtitle {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.brand-text .title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.container {
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,.08);
+}
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #1e90ff;
+  color: white;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.total div {
+  margin-bottom: 6px;
+}
+
+table {
+   
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th, table td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  font-size: 10px
+}
+
+table th {
+  background: #f0f0f0;
+  
+}
+
+.masuk { color: green; font-weight: bold; }
+.keluar { color: red; font-weight: bold; }
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+}
+
+.modal-content button {
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+<header>
+<div class="brand">
+<img src="img/icon-192.png">
+<div class="brand-text">
+<div class="subtitle">Koperasi</div>
+<div class="title">ARFA DRIVER</div>
+</div>
+</div>
+<div>Kas</div>
+<button onclick="kembali()">Kembali</button>
+</header>
+
+  <div class="container">
+
+  <div class="card total">
+    <div>Cash : Rp <span id="saldoCash">0</span></div>
+    <div>Bank : Rp <span id="saldoBank">0</span></div>
+    <hr>
+    <div>Kas Masuk : Rp <span id="totalMasuk">0</span></div>
+    <div>Kas Keluar : Rp <span id="totalKeluar">0</span></div>
+    <hr>
+    <div>Total Saldo : Rp <span id="saldoTotal">0</span></div>
+  </div>
+
+  <div class="card">
+    <h3>Input Kas</h3>
+    <select id="sumberKas">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+    <select id="tipe">
+      <option value="masuk">Kas Masuk</option>
+      <option value="keluar">Kas Keluar</option>
+    </select>
+    <input type="datetime-local" id="tanggal">
+    <input type="number" id="jumlah" placeholder="Jumlah">
+    <input type="text" id="keterangan" placeholder="Keterangan">
+    <button id="btnSimpan">Simpan</button>
+  </div>
+
+  <div class="card">
+    <h3>Riwayat Transaksi</h3>
+    <table id="riwayatTable">
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Tipe</th>
+          <th>Sumber</th>
+          <th>Jumlah</th>
+          <th>Keterangan</th>
+        </tr>
+      </thead>
+      <tbody id="riwayat"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal Edit Kas -->
+<div class="modal" id="modalEditKas">
+  <div class="modal-content">
+    <h3>Edit Transaksi Kas</h3>
+    <input type="hidden" id="editKasKey">
+    <label>Sumber Kas</label>
+    <select id="editKasSumber">
+      <option value="cash">Cash</option>
+      <option value="bank">Bank</option>
+    </select>
+    <label>Tipe</label>
+    <select id="editKasTipe">
+      <option value="masuk">Kas Masuk</option>
+      <option value="keluar">Kas Keluar</option>
+    </select>
+    <label>Jumlah</label>
+    <input type="number" id="editKasJumlah">
+    <label>Tanggal</label>
+    <input type="datetime-local" id="editKasTanggal">
+    <label>Keterangan</label>
+    <input type="text" id="editKasKeterangan">
+    <button onclick="updateKas()">Simpan</button>
+    <button onclick="hapusKasModal()">Hapus</button>
+    <button onclick="tutupModalKas()">Tutup</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+  authDomain: "arfa-c7dee.firebaseapp.com",
+  databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+  projectId: "arfa-c7dee"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Role check
+const role = localStorage.getItem("role") || "user";
+if(role !== "admin") {
+  document.querySelector("#btnSimpan").style.display="none";
+  document.querySelector("#jumlah").disabled=true;
+  document.querySelector("#keterangan").disabled=true;
+  document.querySelector("#tipe").disabled=true;
+  document.querySelector("#sumberKas").disabled=true;
+  document.querySelector("#tanggal").disabled=true;
+}
+
+// References
+const kasRef = ref(db,"kas");
+
+let editKey = null;
+let saldoCash = 0, saldoBank = 0, totalMasuk = 0, totalKeluar = 0;
+
+// Format Rupiah
+function formatRp(n){ return Number(n||0).toLocaleString("id-ID"); }
+
+// Simpan Kas
+document.getElementById("btnSimpan").onclick = async()=>{
+  const sumberKas = document.getElementById("sumberKas").value;
+  const tipe = document.getElementById("tipe").value;
+  const jumlah = Number(document.getElementById("jumlah").value);
+  const ket = document.getElementById("keterangan").value;
+  const tanggalInput = document.getElementById("tanggal").value;
+
+  if(!jumlah){ alert("Jumlah wajib diisi"); return; }
+
+  if(tipe==="keluar"){
+    if(sumberKas==="cash" && jumlah>saldoCash){ alert("Saldo CASH tidak cukup"); return; }
+    if(sumberKas==="bank" && jumlah>saldoBank){ alert("Saldo BANK tidak cukup"); return; }
+  }
+
+  const tanggal = tanggalInput ? new Date(tanggalInput).getTime() : Date.now();
+
+  if(editKey){
+    await update(ref(db,"kas/"+editKey), { sumberKas, tipe, jumlah, keterangan: ket||"Transaksi Kas", tanggal });
+    editKey = null;
+    alert("Data berhasil diupdate");
+  } else {
+    await push(kasRef, { sumberKas, tipe, jumlah, keterangan: ket||"Transaksi Kas", tanggal });
+    alert("Data berhasil disimpan");
+  }
+
+  document.getElementById("jumlah").value="";
+  document.getElementById("keterangan").value="";
+}
+
+// Load dan tampilkan kas
+onValue(kasRef, snap=>{
+  saldoCash = saldoBank = totalMasuk = totalKeluar = 0;
+  const riwayat = document.getElementById("riwayat");
+  riwayat.innerHTML = "";
+
+  if(!snap.exists()) return;
+  const data = Object.entries(snap.val()).sort((a,b)=>Number(b[1].tanggal)-Number(a[1].tanggal));
+
+  data.forEach(([key,i])=>{
+    const jumlah = Number(i.jumlah) || 0;
+    const tipe = String(i.tipe||"masuk").toLowerCase();
+    const sumber = String(i.sumberKas||"cash").toLowerCase();
+    let tanggal = i.tanggal ? new Date(Number(i.tanggal)).toLocaleString("id-ID") : "-";
+
+    if(tipe==="masuk"){ totalMasuk += jumlah; }
+    else{ totalKeluar += jumlah; }
+
+    if(sumber==="cash"){ tipe==="masuk"? saldoCash += jumlah : saldoCash -= jumlah; }
+    if(sumber==="bank"){ tipe==="masuk"? saldoBank += jumlah : saldoBank -= jumlah; }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${tanggal}</td>
+      <td class="${tipe}">${tipe.toUpperCase()}</td>
+      <td>${sumber.toUpperCase()}</td>
+      <td>Rp ${formatRp(jumlah)}</td>
+      <td>${i.keterangan||"-"}</td>
+    `;
+
+    if(role==="admin"){
+      tr.style.cursor = "pointer";
+      tr.addEventListener("click", ()=> editKas(key));
+    }
+
+    riwayat.appendChild(tr);
+  });
+
+  document.getElementById("saldoCash").innerText = formatRp(saldoCash);
+  document.getElementById("saldoBank").innerText = formatRp(saldoBank);
+  document.getElementById("totalMasuk").innerText = formatRp(totalMasuk);
+  document.getElementById("totalKeluar").innerText = formatRp(totalKeluar);
+  document.getElementById("saldoTotal").innerText = formatRp(saldoCash+saldoBank);
+});
+
+// Modal Edit Kas
+window.editKas = async function(key){
+  const snap = await get(ref(db, "kas/"+key));
+  const d = snap.val();
+  if(!d) return;
+
+  editKey = key;
+  document.getElementById("editKasKey").value = key;
+  document.getElementById("editKasSumber").value = d.sumberKas || "cash";
+  document.getElementById("editKasTipe").value = d.tipe || "masuk";
+  document.getElementById("editKasJumlah").value = d.jumlah || 0;
+  document.getElementById("editKasKeterangan").value = d.keterangan || "";
+
+  if(d.tanggal){
+    const t = new Date(d.tanggal);
+    const iso = new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    document.getElementById("editKasTanggal").value = iso;
+  }
+
+  document.getElementById("modalEditKas").style.display = "flex";
+}
+
+window.tutupModalKas = function(){ document.getElementById("modalEditKas").style.display = "none"; }
+
+window.updateKas = async function(){
+  const key = document.getElementById("editKasKey").value;
+  const sumber = document.getElementById("editKasSumber").value;
+  const tipe = document.getElementById("editKasTipe").value;
+  const jumlah = Number(document.getElementById("editKasJumlah").value);
+  const keterangan = document.getElementById("editKasKeterangan").value;
+  const tanggalInput = document.getElementById("editKasTanggal").value;
+  const tanggal = tanggalInput ? new Date(tanggalInput).getTime() : Date.now();
+
+  if(!key) return alert("Data tidak ditemukan");
+  if(!jumlah) return alert("Jumlah wajib diisi");
+
+  await update(ref(db,"kas/"+key), { sumberKas: sumber, tipe, jumlah, keterangan: keterangan||"Transaksi Kas", tanggal });
+  alert("Data berhasil diperbarui");
+  tutupModalKas();
+}
+
+window.hapusKasModal = async function(){
+  const key = document.getElementById("editKasKey").value;
+  if(!key) return;
+  if(confirm("Yakin ingin menghapus transaksi ini?")){
+    await remove(ref(db,"kas/"+key));
+    alert("Data berhasil dihapus");
+    tutupModalKas();
+  }
+}
+    /* ================= KEMBALI ================= */
+window.kembali = function(){
+  window.location.href="dashboard.html";
+}
+</script>
+
+</body>
+</html>

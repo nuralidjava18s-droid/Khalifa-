@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Kas</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
+
+<style>
+
+body{
+font-family:Arial;
+margin:0;
+background:#f4f6f9;
+font-size:14px;
+}
+
+header{
+background:linear-gradient(to right,#1e90ff,#0f3057);
+color:white;
+padding:14px 20px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.brand{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.brand img{
+width:40px;
+height:40px;
+border-radius:50%;
+}
+
+.title{
+font-weight:bold;
+}
+
+.card{
+background:white;
+padding:10px;
+margin:10px;
+border-radius:10px;
+}
+.filter{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+align-items:center;
+justify-content:flex-start;
+background:#f8f9fb;
+padding:10px;
+border-radius:8px;
+}
+
+.filter input{
+width:auto;
+}
+
+.filter button{
+padding:6px 12px;
+}
+
+.summary{
+font-weight:bold;
+margin-top:10px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px;
+text-align:center;
+font-size:12px;
+}
+
+th{
+background:#f1f1f1;
+}
+
+.masuk{color:green;font-weight:bold;}
+.keluar{color:red;font-weight:bold;}
+
+button{
+padding:6px 10px;
+border:none;
+border-radius:6px;
+background:#1e90ff;
+color:white;
+cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="brand">
+<img src="img/icon-192.png">
+<div>
+<div>Koperasi</div>
+<div class="title">ARFA DRIVER</div>
+</div>
+</div>
+
+<div>
+<button onclick="window.location='dashboard.html'">Kembali</button>
+<button onclick="exportPDF()">Export PDF</button>
+</div>
+
+</header>
+
+
+<div class="card">
+
+<div class="filter">
+
+<label>Dari</label>
+<input type="date" id="tglAwal">
+
+<label>Sampai</label>
+<input type="date" id="tglAkhir">
+
+<button onclick="filterTanggal()">Filter</button>
+<button onclick="resetFilter()">Reset</button>
+
+</div>
+
+<div class="summary">
+
+<div id="saldoKas">Saldo Kas : Rp 0</div>
+<div id="kasMasuk">Kas Masuk : Rp 0</div>
+<div id="kasKeluar">Kas Keluar : Rp 0</div>
+
+</div>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Keterangan</th>
+<th>Masuk</th>
+<th>Keluar</th>
+<th>Saldo</th>
+<th>Sumber</th>
+</tr>
+</thead>
+
+<tbody id="laporanKas"></tbody>
+
+</table>
+
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+const firebaseConfig = {
+apiKey: "AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+authDomain: "arfa-c7dee.firebaseapp.com",
+databaseURL: "https://arfa-c7dee-default-rtdb.firebaseio.com",
+projectId: "arfa-c7dee",
+storageBucket: "arfa-c7dee.appspot.com",
+messagingSenderId: "468058520812",
+appId: "1:468058520812:web:f9cbc82fe7e88ecda9b9c9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const kasRef = ref(db,"/kas");
+
+let laporanData=[];
+
+
+function formatRp(n){
+return Number(n||0).toLocaleString("id-ID");
+}
+
+function formatTanggal(t){
+
+if(!t) return "-";
+
+const d=new Date(t);
+
+if(isNaN(d)) return "-";
+
+return d.toLocaleDateString("id-ID");
+
+}
+
+
+onValue(kasRef,(snap)=>{
+
+laporanData=[];
+
+if(snap.exists()){
+
+const data=snap.val();
+
+for(const k in data){
+
+const item=data[k];
+
+laporanData.push({
+
+id:k,
+tanggal:item.tanggal ? new Date(item.tanggal) : new Date(),
+keterangan:item.keterangan ?? "-",
+sumber:item.sumberKas ?? "-",
+masuk:item.tipe==="masuk" ? Number(item.jumlah) : 0,
+keluar:item.tipe==="keluar" ? Number(item.jumlah) : 0
+
+});
+
+}
+
+}
+
+tampilkan(laporanData);
+
+});
+
+
+function tampilkan(data){
+
+const tbody=document.getElementById("laporanKas");
+
+tbody.innerHTML="";
+
+let saldo=0;
+let totalMasuk=0;
+let totalKeluar=0;
+
+
+/* SORTING STABIL */
+data.sort((a,b)=>{
+
+const tgl = a.tanggal - b.tanggal;
+
+if(tgl !== 0) return tgl;
+
+/* jika tanggal sama -> masuk dulu */
+if(a.masuk && !b.masuk) return -1;
+if(!a.masuk && b.masuk) return 1;
+
+return a.id.localeCompare(b.id);
+
+});
+
+
+data.forEach(i=>{
+
+saldo += i.masuk - i.keluar;
+
+totalMasuk += i.masuk;
+totalKeluar += i.keluar;
+
+const tr=document.createElement("tr");
+
+tr.innerHTML=`
+
+<td>${formatTanggal(i.tanggal)}</td>
+<td>${i.keterangan}</td>
+<td class="masuk">${i.masuk ? "Rp "+formatRp(i.masuk) : "-"}</td>
+<td class="keluar">${i.keluar ? "Rp "+formatRp(i.keluar) : "-"}</td>
+<td>Rp ${formatRp(saldo)}</td>
+<td>${(i.sumber || "-").toUpperCase()}</td>
+
+`;
+
+tbody.appendChild(tr);
+
+});
+
+
+document.getElementById("saldoKas").innerText="Saldo Kas : Rp "+formatRp(saldo);
+document.getElementById("kasMasuk").innerText="Kas Masuk : Rp "+formatRp(totalMasuk);
+document.getElementById("kasKeluar").innerText="Kas Keluar : Rp "+formatRp(totalKeluar);
+
+}
+
+
+window.filterTanggal=function(){
+
+const awal=document.getElementById("tglAwal").value;
+const akhir=document.getElementById("tglAkhir").value;
+
+if(!awal || !akhir){
+alert("Pilih tanggal terlebih dahulu");
+return;
+}
+
+const a=new Date(awal);
+const b=new Date(akhir);
+
+b.setHours(23,59,59,999);
+
+const filtered=laporanData.filter(i=>{
+return i.tanggal>=a && i.tanggal<=b;
+});
+
+tampilkan(filtered);
+
+}
+
+
+window.resetFilter=function(){
+
+document.getElementById("tglAwal").value="";
+document.getElementById("tglAkhir").value="";
+
+tampilkan(laporanData);
+
+}
+
+
+window.exportPDF=function(){
+
+const trs=document.querySelectorAll("#laporanKas tr");
+
+if(trs.length===0){
+alert("Tidak ada data");
+return;
+}
+
+const { jsPDF } = window.jspdf;
+const doc=new jsPDF();
+
+doc.setFontSize(14);
+doc.text("KOPERASI ARFA DRIVER",14,15);
+
+doc.setFontSize(11);
+doc.text("LAPORAN KAS",14,22);
+
+
+let rows=[];
+
+trs.forEach(tr=>{
+
+const td=tr.querySelectorAll("td");
+
+rows.push([
+td[0].innerText,
+td[1].innerText,
+td[2].innerText,
+td[3].innerText,
+td[4].innerText,
+td[5].innerText
+]);
+
+});
+
+
+doc.autoTable({
+startY:30,
+head:[["Tanggal","Keterangan","Masuk","Keluar","Saldo","Sumber"]],
+body:rows,
+styles:{fontSize:8}
+});
+
+
+doc.save("laporan_kas.pdf");
+
+}
+
+</script>
+
+</body>
+</html>

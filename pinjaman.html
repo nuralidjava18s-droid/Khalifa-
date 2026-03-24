@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Pinjaman</title>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f9;scroll-behavior:smooth;}
+header{background:linear-gradient(to right,#1e90ff,#0f3057);color:white;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.container{padding:10px;}
+.card{font-size:14px;background:white;padding:12px;border-radius:10px;margin-bottom:12px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+input,select{width:100%;padding:8px;margin-top:5px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;background:#1e90ff;color:white;}
+.icon-btn{border:none;background:none;cursor:pointer;font-size:20px;margin:0 3px;}
+.icon-edit{color:#ffc107;}
+.icon-delete{color:#dc3545;}
+.popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:999;padding:10px;}
+.popup-box{background:white;padding:20px;border-radius:10px;width:300px;max-width:90%;max-height:90vh;overflow-y:auto;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand img{width:42px;height:42px;border-radius:50%;object-fit:cover;}
+.brand-text .subtitle{font-size:12px;opacity:0.9;}
+.brand-text .title{font-size:14px;font-weight:bold;}
+h3{text-align:center}
+.total{font-weight:bold;margin-bottom:10px;}
+</style>
+</head>
+
+<body>
+<header>
+<div class="brand">
+<img src="img/icon-192.png">
+<div class="brand-text">
+<div class="subtitle">Koperasi</div>
+<div class="title">ARFA DRIVER</div>
+</div>
+</div>
+<div>👥 Data Peminjam</div>
+<button onclick="kembali()">Kembali</button>
+</header>
+
+  <div class="container">
+
+<div class="card">
+  <b>Saldo Kas</b><br>
+  Rp <span id="saldoKas">0</span>
+</div>
+
+<div class="card">
+  <b>Total Pinjaman</b><br>
+  Rp <span id="totalPinjaman">0</span>
+</div>
+
+
+<div class="card" id="formPinjaman">
+<h3>Tambah Pinjaman</h3>
+<label>Anggota</label>
+<select id="anggota"></select>
+<label>No Pinjaman</label>
+<input type="text" id="noPinjaman" readonly>
+<label>Tanggal</label>
+<input type="date" id="tanggal">
+<label>Metode</label>
+<select id="metode">
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+</select>
+<label>Jumlah</label>
+<input type="number" id="jumlah" min="1">
+<label>Keterangan</label>
+<input type="text" id="ket">
+<button onclick="simpanPinjaman()">Simpan</button>
+</div>
+
+<div class="card">
+<h3>Daftar Pinjaman</h3>
+<div id="tabelPinjaman"></div>
+</div>
+
+</div>
+
+<div id="popupEdit" class="popup">
+<div class="popup-box">
+<h3>Edit Pinjaman</h3>
+<label>No Pinjaman</label>
+<input type="text" id="editNoPinjaman" readonly>
+<label>Anggota</label>
+<select id="editAnggota"></select>
+<label>Tanggal</label>
+<input type="date" id="editTanggal">
+<label>Metode</label>
+<select id="editMetode">
+<option value="cash">Cash</option>
+<option value="bank">Bank</option>
+</select>
+<label>Jumlah</label>
+<input type="number" id="editJumlah">
+<label>Keterangan</label>
+<input type="text" id="editKet">
+<br><br>
+<button onclick="updatePinjaman()">Update</button>
+<button onclick="tutupPopup()">Batal</button>
+</div>
+</div>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyDd0s73-qW2uiOlBWR-afybFZzMafCHeSo",
+authDomain:"arfa-c7dee.firebaseapp.com",
+databaseURL:"https://arfa-c7dee-default-rtdb.firebaseio.com",
+projectId:"arfa-c7dee"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+if(!localStorage.getItem("role")){
+alert("Silakan login dulu");
+window.location.href="index.html";
+}
+
+const role=localStorage.getItem("role") || "user";
+const anggotaRef=db.ref("anggota");
+const pinjamanRef=db.ref("pinjaman");
+const kasRef = db.ref("kas");
+
+function hitungSaldoKas(){
+  kasRef.on("value", snap=>{
+    let saldo = 0;
+
+    snap.forEach(d=>{
+      let k = d.val();
+      let jumlah = Number(k.jumlah || 0);
+
+      if(k.tipe === "masuk") saldo += jumlah;
+      else saldo -= jumlah;
+    });
+
+    // 🔥 TAMBAHKAN DI SINI
+    document.getElementById("saldoKas").innerText = format(saldo);
+
+    console.log("Saldo Kas:", saldo);
+  });
+}
+
+let dataPinjaman={}, editId=null;
+const anggotaSelect=document.getElementById("anggota");
+const editAnggota=document.getElementById("editAnggota");
+const tabel=document.getElementById("tabelPinjaman");
+const totalPinjaman=document.getElementById("totalPinjaman");
+
+function format(x){return new Intl.NumberFormat("id-ID").format(x)}
+
+// --- generate nomor baru ---
+function generateNoPinjaman(){
+  pinjamanRef.once("value", snap=>{
+    let max=0;
+    snap.forEach(d=>{
+      let p=d.val();
+      if(p.nomor){
+        let num=parseInt(p.nomor.replace("PJ",""));
+        if(num>max) max=num;
+      }
+    });
+    document.getElementById("noPinjaman").value = "PJ"+String(max+1).padStart(3,"0");
+  });
+}
+
+// --- render tabel pinjaman ---
+function renderPinjaman(){
+  pinjamanRef.off(); // 🔥 penting (reset listener)
+  tabel.innerHTML = "";
+  dataPinjaman = {};
+  let total = 0;
+
+  pinjamanRef.on("value", snap=>{
+  tabel.innerHTML="";
+  let total = 0;
+    
+    snap.forEach(d=>{
+      let p=d.val();
+      let id=d.key;
+      dataPinjaman[id]=p;
+      let jumlah=Number(p.jumlah||0);
+      total += jumlah;
+      
+      let tgl = "-";
+if (p.tanggal) {
+  let d = new Date(Number(p.tanggal));
+  if (!isNaN(d.getTime())) {
+    tgl = d.toLocaleDateString("id-ID");
+  }
+}
+      
+          let card=document.createElement("div");
+      card.className="card";
+      
+      card.innerHTML=`
+      <div style="display:flex;justify-content:space-between">
+        <div><b>${p.nomor}</b></div>
+        <div>${p.sumberKas || p.metode || "-"}</div>
+       </div>
+      <div>Anggota : ${p.nama}</div>
+      <div>Tanggal : ${tgl}</div>
+      <div>Pinjaman : Rp ${format(jumlah)}</div>
+      <div>Keterangan : ${p.ket || "-"}</div>
+      
+      <div style="text-align:right">
+        ${role==="admin"?`
+        <button class="icon-btn icon-edit" onclick="editPinjaman('${id}')">
+          <span class="material-icons">edit</span>
+        </button>
+        <button class="icon-btn icon-delete" onclick="hapusPinjaman('${id}')">
+          <span class="material-icons">delete</span>
+        </button>`:``}
+      </div>`;
+      tabel.appendChild(card);
+    });
+    totalPinjaman.innerText=format(total);
+  });
+}
+
+// --- load anggota ---
+anggotaRef.on("value", snap=>{
+  anggotaSelect.innerHTML="<option value=''>Pilih anggota</option>";
+  editAnggota.innerHTML="<option value=''>Pilih anggota</option>";
+  snap.forEach(d=>{
+    let a=d.val();
+    let opt=`<option value="${d.key}">${a.nama}</option>`;
+    anggotaSelect.innerHTML+=opt;
+    editAnggota.innerHTML+=opt;
+  });
+});
+
+// --- simpan pinjaman ---
+function simpanPinjaman(){
+  if(role!=="admin"){alert("Hanya admin yang bisa menambah pinjaman"); return;}
+  let nomor=document.getElementById("noPinjaman").value;
+  let idAnggota=anggotaSelect.value;
+  let nama=anggotaSelect.options[anggotaSelect.selectedIndex].text;
+  let tanggalInput=document.getElementById("tanggal").value;
+  let jumlah=parseInt(document.getElementById("jumlah").value);
+  let metode=document.getElementById("metode").value;
+  let ket=document.getElementById("ket").value;
+  if(!idAnggota||!tanggalInput||!jumlah){alert("Isi semua field"); return;}
+  let tanggalTimestamp=new Date(tanggalInput).getTime();
+  let newRef=pinjamanRef.push();
+  let kasRef=db.ref("kas").push();
+  kasRef.set({tanggal: tanggalTimestamp, keterangan:"Pinjaman "+nama, tipe:"keluar", sumberKas:metode, jumlah});
+  newRef.set({
+  nomor,
+  idAnggota,
+  nama,
+  tanggal: tanggalTimestamp,
+  jumlah,
+  sumberKas: metode, // ✅ FIX FINAL
+  ket,
+  kasId: kasRef.key
+})
+  
+    .then(()=>{alert("Pinjaman tersimpan & kas berkurang");document.getElementById("jumlah").value="";document.getElementById("ket").value="";anggotaSelect.selectedIndex=0; generateNoPinjaman();});
+}
+
+// --- edit pinjaman ---
+function editPinjaman(id) {
+  if(role !== "admin") return;
+
+  let p = dataPinjaman[id];
+  editId = id;
+
+  document.getElementById("editNoPinjaman").value = p.nomor;
+  document.getElementById("editMetode").value = p.sumberKas || p.metode || "cash";
+  document.getElementById("editJumlah").value = p.jumlah || 0;
+  document.getElementById("editKet").value = p.ket || "";
+
+  // Perbaiki tanggal invalid
+  let tgl = new Date(Number(p.tanggal));
+  
+  if(isNaN(tgl.getTime())){
+      // Jika tanggal invalid, pakai tanggal hari ini
+      tgl = new Date();
+  }
+  document.getElementById("editTanggal").value = tgl.toISOString().split("T")[0];
+
+  setTimeout(() => {
+    editAnggota.value = p.idAnggota;
+  }, 200);
+
+  document.getElementById("popupEdit").style.display = "flex";
+}
+
+// --- update pinjaman ---
+function updatePinjaman() {
+  if (!editId) return;
+
+  const idAnggota = document.getElementById("editAnggota").value;
+  const selected = editAnggota.options[editAnggota.selectedIndex];
+  const nama = selected ? selected.text : "";
+
+  const nomor = document.getElementById("editNoPinjaman").value;
+  const ket = document.getElementById("editKet").value;
+  const metode = document.getElementById("editMetode").value;
+  const tanggalInput = document.getElementById("editTanggal").value;
+  const jumlah = Number(document.getElementById("editJumlah").value);
+
+  // VALIDASI
+  if (!idAnggota || !tanggalInput || !jumlah) {
+    alert("Isi semua field!");
+    return;
+  }
+
+  const tanggalTimestamp = new Date(tanggalInput).getTime();
+
+  // UPDATE PINJAMAN
+  db.ref("pinjaman/" + editId).update({
+    nomor,
+    idAnggota,
+    nama,
+    tanggal: tanggalTimestamp,
+    jumlah,
+    sumberKas: metode, // 🔥 pakai ini biar konsisten
+    ket
+  })
+  .then(() => {
+
+    // UPDATE KAS
+    let p = dataPinjaman[editId];
+
+    if (p && p.kasId) {
+      return db.ref("kas/" + p.kasId).update({
+        tanggal: tanggalTimestamp,
+        sumberKas: metode,
+        keterangan: "Pinjaman " + nama,
+        jumlah: jumlah // 🔥 WAJIB supaya saldo sinkron
+      });
+    }
+
+  })
+  .then(() => {
+    alert("Data pinjaman & kas berhasil diupdate!");
+    tutupPopup();
+    editId = null;
+    generateNoPinjaman();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Gagal update: " + err.message);
+  });
+}
+  
+// --- hapus pinjaman ---
+function hapusPinjaman(id){
+  if(!confirm("Hapus pinjaman ini?")) return;
+  let p=dataPinjaman[id];
+  db.ref("pinjaman/"+id).remove();
+  if(p.kasId) db.ref("kas/"+p.kasId).remove();
+}
+
+// --- popup ---
+function tutupPopup(){document.getElementById("popupEdit").style.display="none";}
+function kembali(){window.location="dashboard.html";}
+
+// hide form untuk user
+if(role!=="admin") document.getElementById("formPinjaman").style.display="none";
+document.getElementById("tanggal").valueAsDate=new Date();
+
+// --- init ---
+generateNoPinjaman();
+renderPinjaman();
+  hitungSaldoKas();
+
+  /* ================= KEMBALI ================= */
+window.kembali = function(){
+  window.location.href="dashboard.html";
+}
+  
+</script>
+
+</body>
+</html>
